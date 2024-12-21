@@ -1,0 +1,71 @@
+# inspection of Vectornator file(2 curves)
+
+Document.json
+	drawing:
+		activeArtboardIndex: 0
+		# there are files with multiple artboards
+		artboardPaths: 1 element(gid)
+		settings
+			units: "Pixels"
+
+gid.json
+	# originally sorted in alphabetical order
+	artboards:
+		frame: h, w, x, y
+		title: "Current Screen
+		layerIds: 1 element 0
+	layers:
+		# should I discard layer named "Guides"?
+		# because it is not an element?
+		opacity: 1
+		isLocked: false
+		isVisible: true
+		name: "Layer 1"
+		elementIds: 2 elements 0, 1
+	elements:
+		2 elements
+			blendMode: 0
+			isHidden: false
+			isLocked: false
+			localTransformId: 0
+			name: "Curve 1"
+			opacity: 1
+			subElement:
+				stylable:
+					_0: 0
+			# 2nd one (diffs)
+			localTransformId: 1
+			name: "Curve 2"
+			subElement:
+				stylable:
+					_0: 1
+	# how should I apply localTransform/???? <g?>
+	localTransforms:
+		2 elements
+		rotation: 0
+		scale: 1,1
+		translation: x, y
+	stylables:
+		2 elements
+		# next one says abstractPath: _0: 1
+		subElement:
+			abstractPath:
+				_0: 0
+	abstractPaths:
+		2 elements
+		strokeStyleId: 0
+		subElement:
+			path:
+				_0: 0
+	pathStrokeStyles:
+		#hehehe
+	paths:
+		2 elements
+		geometryId: 0
+		inputParams:
+			shapeDescription: _0: "(curve)"
+	pathGeometries:
+		2 elements
+		closed: false
+		nodes: actual paths
+	
