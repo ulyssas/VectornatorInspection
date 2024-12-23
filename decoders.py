@@ -76,18 +76,42 @@ def create_svg_header(artboard):
     return svg_header
 
 
-# def read_gid_json(gid_json):
-#    decoded_data = json.loads(gid_json.decode("utf-8"))
 
-#    artboards = decoded_data["artboards"]
-#    layers = decoded_data["layers"]
-#    elements = decoded_data["elements"]
-#    local_transforms = decoded_data["localTransforms"]
-#    stylables = decoded_data["stylables"]
-#    abstract_paths = decoded_data["abstractPaths"]
-#    path_stroke_styles = decoded_data["pathStrokeStyles"]
-#    paths = decoded_data["paths"]
-#    path_geometries = decoded_data["pathGeometries"]
+def read_gid_json(gid_json):
+    # List up all layers and elements
+    layer_ids = gid_json.get("artboards", [])[0].get("layerIds", [])
+    layers = gid_json.get("layers", [])
+    elements = gid_json.get("elements", [])
 
-#    return decoded_data["artboards"]
-#    #return decoded_data["artboards"]
+    #print(json.dumps(layer_ids, indent=4))
+    #print(json.dumps(layers, indent=4))
+    #print(json.dumps(elements, indent=4))
+
+    # Locate elements in layers.elementIds
+    for layer_id in layer_ids:
+        layer = layers[layer_id]
+        layer_name = layer.get("name", "Unnamed Layer")
+        layer_element_ids = layer.get("elementIds", [])
+
+        print(f"Layer Name: {layer_name}")
+        print("  Elements in Layer:")
+
+        # process each elements
+        for element_id in layer_element_ids:
+            element = elements[element_id]
+            if element:
+                element_name = element.get("name", "Unnamed Element")
+                print(f"    - Element Name: {element_name}")
+
+#    artboards = gid_json["artboards"]
+#    layers = gid_json["layers"]
+#    elements = gid_json["elements"]
+#    local_transforms = gid_json["localTransforms"]
+#    stylables = gid_json["stylables"]
+#    abstract_paths = gid_json["abstractPaths"]
+#    path_stroke_styles = gid_json["pathStrokeStyles"]
+#    paths = gid_json["paths"]
+#    path_geometries = gid_json["pathGeometries"]
+
+#    return gid_json["artboards"]
+#    #return gid_json["artboards"]

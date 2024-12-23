@@ -43,20 +43,20 @@ def open_vectornator(file):
             # * Only the first one for now
             gid_json = ext.extract_gid_json(archive, artboard_paths[0]) # the THING!!!!
 
-            
+            d.read_gid_json(gid_json)
 
-            translation = gid_json["localTransforms"][0].get("translation")
-            converted_pathdata = t.apply_translation(
-                gid_json["pathGeometries"][0], translation)
-            pathdata = d.path_geometry_to_svg_path(
-                converted_pathdata)  # specify as many
+            #translation = gid_json["localTransforms"][0].get("translation")
+            #converted_pathdata = t.apply_translation(
+            #    gid_json["pathGeometries"][0], translation)
+            #pathdata = d.path_geometry_to_svg_path(
+            #    converted_pathdata)  # specify as many
 
-            translation2 = gid_json["localTransforms"][1].get("translation")
-            converted_pathdata2 = t.apply_translation(
-                gid_json["pathGeometries"][1], translation2)
-            pathdata2 = d.path_geometry_to_svg_path(
-                converted_pathdata2)  # specify as many
-            exp.create_svg(pathdata, pathdata2)
+            #translation2 = gid_json["localTransforms"][1].get("translation")
+            #converted_pathdata2 = t.apply_translation(
+            #    gid_json["pathGeometries"][1], translation2)
+            #pathdata2 = d.path_geometry_to_svg_path(
+            #    converted_pathdata2)  # specify as many
+            #exp.create_svg(pathdata, pathdata2)
 
             # print(json.dumps(gid_json, indent=4))  # Pretty-print the first artboard JSON
 
@@ -71,4 +71,4 @@ def open_vectornator(file):
 
 if __name__ == "__main__":
     open_vectornator(
-        "/Users/nozblue/Pictures/VECTORNATOR - for inspection/double.curve")
+        "/Users/nozblue/Pictures/VECTORNATOR - for inspection/Pyh.curve")
