@@ -59,6 +59,14 @@ gid.json
 				_0: 0
 	pathStrokeStyles:
 		#hehehe
+		cap 0 butt cap, 1 round cap, 2 square cap
+		join 0 miter join, 1 round join, 2 bevel join
+		rgba and "hsba": {
+                    "alpha": 1,
+                    "brightness": 1,
+                    "hue": 0.1755852848291397,
+                    "saturation": 0
+                }
 	paths:
 		2 elements
 		geometryId: 0

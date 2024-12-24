@@ -13,7 +13,6 @@ import zipfile
 import decoders as d
 import exporters as exp
 import extractors as ext
-import tools as t
 
 
 # main
@@ -41,10 +40,15 @@ def open_vectornator(file):
 
             # Step 5: Read the first Artboard (GUID JSON)
             # * Only the first one for now
-            gid_json = ext.extract_gid_json(archive, artboard_paths[0]) # the THING!!!!
+            gid_json = ext.extract_gid_json(archive, artboard_paths[0])
 
-            d.read_gid_json(gid_json)
+            # I don't know what other artboards are
+            artboard = gid_json.get("artboards")[0]
 
+            layers = d.read_gid_json(gid_json)
+            #print(layers)
+
+            exp.create_svg(artboard, layers)
             #translation = gid_json["localTransforms"][0].get("translation")
             #converted_pathdata = t.apply_translation(
             #    gid_json["pathGeometries"][0], translation)
@@ -71,4 +75,4 @@ def open_vectornator(file):
 
 if __name__ == "__main__":
     open_vectornator(
-        "/Users/nozblue/Pictures/VECTORNATOR - for inspection/Pyh.curve")
+        "/Users/nozblue/Pictures/VECTORNATOR - for inspection/PyhPort3.curve")

@@ -1,4 +1,5 @@
 # Vectornator Inspection
+<img src="icon.png" width="128" />
 
 ## About
 Vectornator Inspection aims to convert .vectornator / .curve files into SVG.

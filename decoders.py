@@ -8,7 +8,116 @@ converts Vectornator JSON data to usable data.
 import base64
 import json
 import plistlib
-import xml.etree.ElementTree as ET
+
+
+def read_gid_json(gid_json):
+    """Reads gid.json and returns simply-structured data."""
+    # List up all layers and elements
+    layer_ids = gid_json.get("artboards", [])[0].get("layerIds", [])
+    layers = gid_json.get("layers", [])
+    layers_result = []
+
+    # Locate elements in layers.elementIds
+    for layer_id in layer_ids:
+        layer = layers[layer_id]
+        layers_result.append(
+                traverse_layer(gid_json, layer))
+
+    return layers_result
+
+
+def traverse_layer(gid_json, layer):
+    """Traverse specified layer and extract their attributes."""
+    layer_element_ids = layer.get("elementIds", [])
+    layer_result = {
+        "name": layer.get("name", "Unnamed Layer"),
+        "opacity": layer.get("opacity", 1),
+        "isVisible": layer.get("isVisible", True),
+        "isLocked": layer.get("isLocked", False),
+        "isExpanded": layer.get("isExpanded", False),
+        "elements": []  # store elements
+    }
+    # process each elements
+    for element_id in layer_element_ids:
+        element = get_element(gid_json, element_id)
+        if element:
+            layer_result["elements"].append(
+                    traverse_element(gid_json, element))
+            #print(json.dumps(traverse_element(gid_json, element),
+            #      indent=4, ensure_ascii=False))
+
+    return layer_result
+
+
+def traverse_element(gid_json, element):
+    """Traverse specified element and extract their attributes."""
+
+    # TODO if there's something inside groupElements, VI has to ignore stylables~pathGeometry
+
+    # easier-to-process data structure
+    element_result = {
+        "name": element.get("name", "Unnamed Element"),
+        "localTransform": None,
+        "stylable": None,
+        "abstractPath": None,
+        "strokeStyle": None,
+        "path": None,
+        "pathGeometry": None,
+        "groupElements": []  # store group elements
+    }
+
+    # localTransform
+    local_transform_id = element.get("localTransformId")
+    if local_transform_id is not None:
+        element_result["localTransform"] = get_local_transform(
+            gid_json, local_transform_id)
+
+    # Stylable
+    stylable_id = element.get("subElement", {}).get("stylable", {}).get("_0")
+    if stylable_id is not None:
+        stylable = get_stylable(gid_json, stylable_id)
+        element_result["stylable"] = stylable
+
+        # Abstract Path
+        abstract_path_id = stylable.get("subElement", {}).get(
+            "abstractPath", {}).get("_0")
+        if abstract_path_id is not None:
+            abstract_path = get_abstract_path(gid_json, abstract_path_id)
+            element_result["abstractPath"] = abstract_path
+
+            # Stroke Style
+            stroke_style_id = abstract_path.get("strokeStyleId")
+            if stroke_style_id is not None:
+                stroke_style = get_stroke_style(gid_json, stroke_style_id)
+                element_result["strokeStyle"] = stroke_style
+
+            # Path
+            path_id = abstract_path.get(
+                "subElement", {}).get("path", {}).get("_0")
+            if path_id is not None:
+                path = get_path(gid_json, path_id)
+                element_result["path"] = path
+
+                # Path Geometry
+                geometry_id = path.get("geometryId")
+                if geometry_id is not None:
+                    path_geometry = get_path_geometries(gid_json, geometry_id)
+                    element_result["pathGeometry"] = path_geometry
+
+    # Grouping
+    group_id = element.get("subElement", {}).get("group", {}).get("_0")
+    if group_id is not None:
+        # get elements inside group
+        group = get_group(gid_json, group_id)
+        group_element_ids = group.get("elementIds", [])
+        for group_element_id in group_element_ids:
+            group_element = get_element(gid_json, group_element_id)
+            if group_element:
+                # get group elements recursively
+                element_result["groupElements"].append(
+                    traverse_element(gid_json, group_element))
+
+    return element_result
 
 
 def decode_b64_plist(encoded_string):
@@ -17,101 +126,49 @@ def decode_b64_plist(encoded_string):
     return decoded_bplist
 
 
-def path_geometry_to_svg_path(data):
-    """Converts pathGeometry data to svg path (d={path})."""
-    nodes = data["nodes"]
-    closed = data.get("closed", False)
-    svg_path = ""
-
-    # start from initial anchor point
-    first_node = nodes[0]
-    svg_path += f"M {first_node['anchorPoint'][0]} {first_node['anchorPoint'][1]} "
-
-    # process each nodes in order
-    for i, node in enumerate(nodes[1:], start=1):
-        anchor = node["anchorPoint"]
-        in_point = node.get("inPoint", anchor)
-        out_point = nodes[i - 1].get("outPoint", nodes[i - 1]["anchorPoint"])
-
-        # bezier curve
-        svg_path += f"C {out_point[0]} {out_point[1]} {in_point[0]} {in_point[1]} {anchor[0]} {anchor[1]} "
-
-    # close path option
-    if closed:
-        # adds a curve which connects last node and first node
-        last_node = nodes[-1]
-        out_point = last_node.get("outPoint", last_node["anchorPoint"])
-        in_point = first_node.get("inPoint", first_node["anchorPoint"])
-        svg_path += f"C {out_point[0]} {out_point[1]} {in_point[0]} {in_point[1]} {first_node['anchorPoint'][0]} {first_node['anchorPoint'][1]} "
-        svg_path += "Z"
-
-    return svg_path
-
-
-def create_svg_header(artboard):
-    """
-    Converts an artboard JSON object to an SVG element.
-
-    Args:
-        artboard (dict): A dictionary containing artboard data.
-
-    Returns:
-        ET.Element: An SVG root element with attributes based on the artboard data.
-    """
-    # Extract frame information
-    frame = artboard["frame"]
-    width = frame["width"]
-    height = frame["height"]
-    x = frame["x"]
-    y = frame["y"]
-
-    # Create the SVG element
-    svg_header = ET.Element("svg", {
-        "width": str(width),
-        "height": str(height),
-        "viewBox": f"{x} {y} {width} {height}",
-        "xmlns": "http://www.w3.org/2000/svg"
-    })
-
-    return svg_header
-
-
-
-def read_gid_json(gid_json):
-    # List up all layers and elements
-    layer_ids = gid_json.get("artboards", [])[0].get("layerIds", [])
-    layers = gid_json.get("layers", [])
+def get_element(gid_json, index):
+    """Get element from gid_json."""
     elements = gid_json.get("elements", [])
+    return elements[index]
 
-    #print(json.dumps(layer_ids, indent=4))
-    #print(json.dumps(layers, indent=4))
-    #print(json.dumps(elements, indent=4))
 
-    # Locate elements in layers.elementIds
-    for layer_id in layer_ids:
-        layer = layers[layer_id]
-        layer_name = layer.get("name", "Unnamed Layer")
-        layer_element_ids = layer.get("elementIds", [])
+def get_local_transform(gid_json, index):
+    """Get localTransform from gid_json."""
+    local_transforms = gid_json.get("localTransforms", [])
+    return local_transforms[index]
 
-        print(f"Layer Name: {layer_name}")
-        print("  Elements in Layer:")
 
-        # process each elements
-        for element_id in layer_element_ids:
-            element = elements[element_id]
-            if element:
-                element_name = element.get("name", "Unnamed Element")
-                print(f"    - Element Name: {element_name}")
+def get_stylable(gid_json, index):
+    """Get stylable from gid_json."""
+    stylables = gid_json.get("stylables", [])
+    return stylables[index]
 
-#    artboards = gid_json["artboards"]
-#    layers = gid_json["layers"]
-#    elements = gid_json["elements"]
-#    local_transforms = gid_json["localTransforms"]
-#    stylables = gid_json["stylables"]
-#    abstract_paths = gid_json["abstractPaths"]
-#    path_stroke_styles = gid_json["pathStrokeStyles"]
-#    paths = gid_json["paths"]
-#    path_geometries = gid_json["pathGeometries"]
 
-#    return gid_json["artboards"]
-#    #return gid_json["artboards"]
+def get_group(gid_json, index):
+    """Get group from gid_json."""
+    groups = gid_json.get("groups", [])
+    return groups[index]
+
+
+def get_abstract_path(gid_json, index):
+    """Get abstractPath from gid_json."""
+    abstract_paths = gid_json.get("abstractPaths", [])
+    return abstract_paths[index]
+
+
+def get_stroke_style(gid_json, index):
+    """Get pathStrokeStyle from gid_json."""
+    stroke_styles = gid_json.get("pathStrokeStyles", [])
+    return stroke_styles[index]
+
+
+def get_path(gid_json, index):
+    """Get path from gid_json."""
+    paths = gid_json.get("paths", [])
+    return paths[index]
+
+
+def get_path_geometries(gid_json, index):
+    """Get pathGeometry from gid_json."""
+    path_geometries = gid_json.get("pathGeometries", [])
+    return path_geometries[index]
