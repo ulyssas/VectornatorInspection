@@ -1,5 +1,6 @@
 # Vectornator Inspection
 <img src="icon.png" width="128" />
+![](example.png)
 
 ## About
 Vectornator Inspection aims to convert .vectornator / .curve files into SVG.
@@ -7,16 +8,19 @@ Vectornator Inspection aims to convert .vectornator / .curve files into SVG.
 ## TODO
 * Complete Linearity Curve 5.x format(yes, Vectornator 4.x and Curve 5.x files are technically different format!)
 * Vectornator 4.x file format support will be added later.
-* apply_transform, which applies localTransform to pathGeometry without need of path property `transform`
-* text, Curve has weired text format (base64-encoded binary plist). I made the decoder, but I haven't done anything else
-* SVG styling. This project as of now only reads pathGeometry. It doesn't apply styles(fills, strokes, caps, etc)
+* apply_transform, which applies localTransform to pathGeometry without need of path property `transform`.
+* text, Curve has weired text format (base64-encoded binary plist). I made the decoder, but I haven't done anything else.
+* SVG styling. This project as of now only reads pathGeometry. It doesn't apply styles(fills, strokes, caps, etc).
+* Other stuffs(line styles, multiple artboards) I'm not sure how to implement them.
+
+Any amount of contribution is welcome!
 
 ## Motivation
 Popular Illustrator alternative app Vectornator has changed its name to Linearity Curve.
 
 Vectornator offered all of its features for free. However, with Linearity Curve, most of them have been paywalled, **INCLUDING SVG/PDF EXPORT.**
 
-This means Curve documents cannot be exported without compromising quality.
+This means Curve documents cannot be exported without sacrificing quality.
 
 All of my works on Curve can no longer be exported with layer structures intact. It is such a bummer.
 

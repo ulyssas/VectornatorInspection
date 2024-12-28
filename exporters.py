@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 import tools as t
 
 
-def create_svg(artboard, layers):
+def create_svg(artboard, layers, file):
     """Exports svg file. Under construction."""
     # SVG header
     svg = create_svg_header(artboard)
@@ -50,14 +50,15 @@ def create_svg(artboard, layers):
     ET.dump(svg)
 
     # ツリーを構築して保存
-    file_path = "/Users/nozblue/Pictures/VECTORNATOR - for inspection/tuning.svg"
     tree = ET.ElementTree(svg)
-    tree.write(file_path, encoding="UTF-8", xml_declaration=True)
+    tree.write(file, encoding="UTF-8", xml_declaration=True)
 
 
 def create_svg_element(element):
     """
     Converts an element defined in VI Decoders.traverse_element() to an SVG path.
+
+    Custom style does not work right now.
     """
     return ET.Element("path", {
         "id": element.get("name"),
@@ -73,9 +74,6 @@ def create_svg_element(element):
             #                    element.get("localTransform").get("translation"))
         )
     })
-
-
-# def create_svg_element_group()
 
 
 def create_svg_header(artboard):

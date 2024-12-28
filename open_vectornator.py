@@ -10,6 +10,8 @@ import logging
 import traceback
 import zipfile
 
+from packaging import version
+
 # Vectornator Inspection
 import decoders as d
 import exporters as exp
@@ -35,8 +37,9 @@ def open_vectornator(file):
             version = document.get("appVersion", "unknown app version")
             artboard_paths = drawing_data.get("artboardPaths", [])
 
-            print(f"Unit: {units}") # * will be used later
-            print(f"Version: {version}") # * file format is different between 4.x and 5.x (4.13.7 vs 5.18.0)
+            print(f"Unit: {units}")  # * will be used later
+            # * file format is different between 4.x and 5.x (e.g. 4.13.7 vs 5.18.0)
+            check_version(version)
 
             if not artboard_paths:
                 logging.warning("No artboard paths found in the document.")
@@ -50,7 +53,7 @@ def open_vectornator(file):
             artboard = gid_json.get("artboards")[0]
 
             layers = d.read_gid_json(gid_json)
-            #print(json.dumps(gid_json, indent=4))
+            # print(json.dumps(gid_json, indent=4))
 
             exp.create_svg(artboard, layers)
 
@@ -58,11 +61,25 @@ def open_vectornator(file):
         logging.error("The provided file is not a valid ZIP archive.")
     except KeyError as e:
         logging.error(f"Required file missing in the archive: {e}")
+    except ValueError as e:
+        logging.error(f"Vectornator file is not supported. {e}")
     except Exception as e:
         logging.error(
             f"An unexpected error occurred: {traceback.format_exc()}")
 
 
+def check_version(input_version: str):
+    """check if the file version is 5.x"""
+    required_version = version.parse("5.0.0")  # Linearity Curve 5.x
+    current_version = version.parse(input_version)
+
+    if current_version < required_version:
+        raise ValueError(
+            f"Unsupported version: {input_version}. Version 5.0.0 or up is required.")
+    else:
+        print(f"Supported version: {input_version}.")
+
+
 if __name__ == "__main__":
     open_vectornator(
-        "/Users/nozblue/Pictures/VECTORNATOR - for inspection/IlluminasMENU.vectornator")
+        "/Users/nozblue/Pictures/VECTORNATOR - for inspection/PyhPort6.curve")
