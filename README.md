@@ -1,5 +1,5 @@
 # Vectornator Inspection
-<img src="icon.png" width="128" />
+
 ![](example.png)
 
 ## About
