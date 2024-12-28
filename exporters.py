@@ -5,6 +5,7 @@ outputs svg file.
 """
 
 
+import os
 import xml.etree.ElementTree as ET
 
 import tools as t
@@ -49,9 +50,15 @@ def create_svg(artboard, layers, file):
 
     ET.dump(svg)
 
-    # ツリーを構築して保存
+    # get input file directory
+    directory = os.path.dirname(file)
+
+    # create output file directory
+    output = os.path.join(directory, "result.svg")
+
+    # construct the tree and save svg file
     tree = ET.ElementTree(svg)
-    tree.write(file, encoding="UTF-8", xml_declaration=True)
+    tree.write(output, encoding="UTF-8", xml_declaration=True)
 
 
 def create_svg_element(element):
@@ -59,6 +66,8 @@ def create_svg_element(element):
     Converts an element defined in VI Decoders.traverse_element() to an SVG path.
 
     Custom style does not work right now.
+
+    path transform is not optimal, I really want apply_transform to work
     """
     return ET.Element("path", {
         "id": element.get("name"),
@@ -70,8 +79,8 @@ def create_svg_element(element):
         "transform": t.create_group_transform(element.get("localTransform")),
         "d": path_geometry_to_svg_path(
             element.get("pathGeometry")
-            #t.apply_translation(element.get("pathGeometry"),
-            #                    element.get("localTransform").get("translation"))
+            #t.apply_transform(element.get("pathGeometry"),
+                                #element.get("localTransform"))
         )
     })
 

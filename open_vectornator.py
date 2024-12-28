@@ -3,9 +3,12 @@ Vectornator Inspection (2024/12/7)
 
 description: Linearity Curve file reader(5.18.0) with tons of ChatGPT code
 
+usage: python open_vectornator.py file.curve
+
 what works (2024/12/28): pathGeometry -> SVG path, very primitive svg export
 """
 
+import argparse
 import logging
 import traceback
 import zipfile
@@ -17,8 +20,11 @@ import decoders as d
 import exporters as exp
 import extractors as ext
 
+parser = argparse.ArgumentParser(description='Linearity Curve file reader')
 
-# main
+parser.add_argument('input_file', help='Linearity Curve file')
+
+
 def open_vectornator(file):
     """Open and process a Vectornator file."""
     try:
@@ -55,7 +61,7 @@ def open_vectornator(file):
             layers = d.read_gid_json(gid_json)
             # print(json.dumps(gid_json, indent=4))
 
-            exp.create_svg(artboard, layers)
+            exp.create_svg(artboard, layers, file)
 
     except zipfile.BadZipFile:
         logging.error("The provided file is not a valid ZIP archive.")
@@ -81,5 +87,5 @@ def check_version(input_version: str):
 
 
 if __name__ == "__main__":
-    open_vectornator(
-        "/Users/nozblue/Pictures/VECTORNATOR - for inspection/PyhPort6.curve")
+    args = parser.parse_args()
+    open_vectornator(args.input_file)
