@@ -1,8 +1,9 @@
 """
 Vectornator Inspection (2024/12/7)
 
-! lets crack the code of Vectornator files!
-* with great help from ChatGPT
+description: Linearity Curve file reader(5.18.0) with tons of ChatGPT code
+
+what works (2024/12/28): pathGeometry -> SVG path, very primitive svg export
 """
 
 import logging
@@ -31,8 +32,11 @@ def open_vectornator(file):
 
             # Step 4: Process Units and Artboards
             units = drawing_data.get("settings", {}).get("units", "Pixels")
+            version = document.get("appVersion", "unknown app version")
             artboard_paths = drawing_data.get("artboardPaths", [])
+
             print(f"Unit: {units}") # * will be used later
+            print(f"Version: {version}") # * file format is different between 4.x and 5.x (4.13.7 vs 5.18.0)
 
             if not artboard_paths:
                 logging.warning("No artboard paths found in the document.")
@@ -46,23 +50,9 @@ def open_vectornator(file):
             artboard = gid_json.get("artboards")[0]
 
             layers = d.read_gid_json(gid_json)
-            #print(layers)
+            #print(json.dumps(gid_json, indent=4))
 
             exp.create_svg(artboard, layers)
-            #translation = gid_json["localTransforms"][0].get("translation")
-            #converted_pathdata = t.apply_translation(
-            #    gid_json["pathGeometries"][0], translation)
-            #pathdata = d.path_geometry_to_svg_path(
-            #    converted_pathdata)  # specify as many
-
-            #translation2 = gid_json["localTransforms"][1].get("translation")
-            #converted_pathdata2 = t.apply_translation(
-            #    gid_json["pathGeometries"][1], translation2)
-            #pathdata2 = d.path_geometry_to_svg_path(
-            #    converted_pathdata2)  # specify as many
-            #exp.create_svg(pathdata, pathdata2)
-
-            # print(json.dumps(gid_json, indent=4))  # Pretty-print the first artboard JSON
 
     except zipfile.BadZipFile:
         logging.error("The provided file is not a valid ZIP archive.")
@@ -75,4 +65,4 @@ def open_vectornator(file):
 
 if __name__ == "__main__":
     open_vectornator(
-        "/Users/nozblue/Pictures/VECTORNATOR - for inspection/PyhPort3.curve")
+        "/Users/nozblue/Pictures/VECTORNATOR - for inspection/IlluminasMENU.vectornator")

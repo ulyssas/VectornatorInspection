@@ -8,13 +8,6 @@ miscellaneous functions
 import math
 
 
-def apply_transform(data, local_transform):
-    rotated = apply_rotation(data, local_transform.get("rotation"))
-    scaled = apply_scale(rotated, local_transform.get("scale"))
-    translated = apply_translation(scaled, local_transform.get("translation"))
-    return translated
-
-
 def apply_translation(data, translation):
     """Applies translation to pathGeometry nodes."""
     tx, ty = translation
@@ -46,63 +39,68 @@ def apply_translation(data, translation):
     }
 
 
-def apply_rotation(data, rotation):
-    """Applies rotation to pathGeometry nodes."""
-    angle = rotation  # rotation angle(radian)
-    cos_theta = math.cos(angle)
-    sin_theta = math.sin(angle)
-    transformed_nodes = []
+def calculate_bbox_center(nodes):
+    """Calculates the center of the bounding box for given nodes."""
+    min_x = min(node["anchorPoint"][0] for node in nodes)
+    max_x = max(node["anchorPoint"][0] for node in nodes)
+    min_y = min(node["anchorPoint"][1] for node in nodes)
+    max_y = max(node["anchorPoint"][1] for node in nodes)
 
-    for node in data["nodes"]:
-        transformed_node = {
-            "anchorPoint": [
-                cos_theta * node["anchorPoint"][0] - sin_theta * node["anchorPoint"][1],
-                sin_theta * node["anchorPoint"][0] + cos_theta * node["anchorPoint"][1]
-            ],
-            "inPoint": [
-                cos_theta * node["inPoint"][0] - sin_theta * node["inPoint"][1],
-                sin_theta * node["inPoint"][0] + cos_theta * node["inPoint"][1]
-            ],
-            "outPoint": [
-                cos_theta * node["outPoint"][0] - sin_theta * node["outPoint"][1],
-                sin_theta * node["outPoint"][0] + cos_theta * node["outPoint"][1]
-            ],
-            "nodeType": node["nodeType"],
-            "cornerRadius": node["cornerRadius"],
-        }
-        transformed_nodes.append(transformed_node)
+    center_x = (min_x + max_x) / 2
+    center_y = (min_y + max_y) / 2
 
-    return {
-        "closed": data["closed"],
-        "nodes": transformed_nodes
-    }
+    len_x = max_x - min_x
+    len_y = max_y - min_y
+    print(f"{len_x}, {len_y}")
+
+    return center_x, center_y
 
 
-def apply_scale(data, scale):
-    """Applies scaling to pathGeometry nodes."""
-    sx, sy = scale  # scale coefficients
-    transformed_nodes = []
+def create_group_transform(localTransform):
+    """
+    Creates a transform string for the `g` element in SVG format.
 
-    for node in data["nodes"]:
-        transformed_node = {
-            "anchorPoint": [
-                node["anchorPoint"][0] * sx,
-                node["anchorPoint"][1] * sy
-            ],
-            "inPoint": [
-                node["inPoint"][0] * sx,
-                node["inPoint"][1] * sy
-            ],
-            "outPoint": [
-                node["outPoint"][0] * sx,
-                node["outPoint"][1] * sy
-            ],
-            "nodeType": node["nodeType"],
-            "cornerRadius": node["cornerRadius"] * max(abs(sx), abs(sy)),  # adapt cornerRadius
-        }
-        transformed_nodes.append(transformed_node)
+    Args:
+        localTransform (dict): A dictionary containing rotation, shear, scale, and translation.
 
-    return {
-        "closed": data["closed"],
-        "nodes": transformed_nodes
-    }
+    Returns:
+        str: A transform string with separate transformations (e.g., rotate, translate, skewX, scale).
+    """
+    rotation = localTransform.get("rotation", 0) # radian
+    scale = localTransform.get("scale", [1, 1])
+    shear = localTransform.get("shear", 0) # ??? 60_deg in Curve == "shear": -1.732050807568874
+    translation = localTransform.get("translation", [0, 0])
+
+    # Extract values
+    rotation_deg = math.degrees(rotation)
+    sx, sy = scale
+    shear_deg = math.degrees(math.atan(shear))  # Shear is given in radians
+    tx, ty = translation
+    #cx, cy = center # bound_center = t.calculate_bbox_center(element.get("pathGeometry")["nodes"])
+
+    # Create transform components
+    # The order is important
+    transform_parts = []
+    if tx != 0 or ty != 0:
+        # Translate by (tx, ty)
+        transform_parts.append(f"translate({tx:.6f} {ty:.6f})")
+
+    if rotation != 0:
+        # Rotate around origin (adjust if a specific pivot is needed)
+        # rotation center annoyed me
+        #transform_parts.append(f"rotate({rotation_deg:.6f} {cx:.6f} {cy:.6f})")
+        transform_parts.append(f"rotate({rotation_deg:.6f})")
+
+    if sx != 1 or sy != 1:
+        # Scale by (sx, sy)
+        transform_parts.append(f"scale({sx:.6f} {sy:.6f})")
+
+    if shear != 0:
+        # Skew in the X direction (SVG does not directly support skewY)
+        transform_parts.append(f"skewX({shear_deg:.6f})")
+
+
+    # Join components with spaces
+    return " ".join(transform_parts)
+
+

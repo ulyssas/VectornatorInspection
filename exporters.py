@@ -29,8 +29,10 @@ def create_svg(artboard, layers):
         for element in elements:
             # if the element is a group
             if element.get("groupElements", []):
+                root_transform = element.get("localTransform")
                 svg_group = ET.Element("g", {
                     "id": layer.get("name"),
+                    "transform": t.create_group_transform(root_transform)
                 })
                 group_elements = element.get("groupElements")
                 print(f"ELEMENTS {group_elements}")
@@ -64,9 +66,11 @@ def create_svg_element(element):
         "stroke-width": "3",
         "stroke-linecap": "round",
         "stroke-linejoin": "round",
+        "transform": t.create_group_transform(element.get("localTransform")),
         "d": path_geometry_to_svg_path(
-            t.apply_transform(element.get("pathGeometry"),
-                                element.get("localTransform"))
+            element.get("pathGeometry")
+            #t.apply_translation(element.get("pathGeometry"),
+            #                    element.get("localTransform").get("translation"))
         )
     })
 
@@ -90,6 +94,7 @@ def create_svg_header(artboard):
     height = frame["height"]
     x = frame["x"]
     y = frame["y"]
+    title = artboard.get("title", "Untitled")
 
     # Create the SVG element
     svg_header = ET.Element("svg", {
@@ -97,6 +102,7 @@ def create_svg_header(artboard):
         "height": str(height),
         "viewBox": f"{x} {y} {width} {height}",
         "version": "1.1",
+        "id": f"{title}",
         "xmlns": "http://www.w3.org/2000/svg"
     })
 
