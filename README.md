@@ -8,7 +8,7 @@ Vectornator Inspection aims to convert .vectornator / .curve files into SVG.
 ## TODO
 * Complete Linearity Curve 5.x format(yes, Vectornator 4.x and Curve 5.x files are technically different format!)
 * Vectornator 4.x file format support will be added later.
-* apply_transform, which applies localTransform to pathGeometry without need of path property `transform`.
+* group inside group and compoundPath.
 * Automatically uses `Pixels` as units. Curve supports other units as well, which will be added later.
 * text, Curve has weired text format (base64-encoded binary plist). I made the decoder, but I haven't done anything else.
 * SVG styling. This project as of now only reads pathGeometry. It doesn't apply styles(fills, strokes, caps, etc).

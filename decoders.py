@@ -12,12 +12,12 @@ import plistlib
 
 def read_gid_json(gid_json):
     """Reads gid.json and returns simply-structured data."""
-    # List up all layers and elements
+    # "layer_ids" contain layer indexes, while "layers" contain existing layers
     layer_ids = gid_json.get("artboards", [])[0].get("layerIds", [])
     layers = gid_json.get("layers", [])
     layers_result = []
 
-    # Locate elements in layers.elementIds
+    # Locate elements specified in layers.elementIds with traverse_layer
     for layer_id in layer_ids:
         layer = layers[layer_id]
         layers_result.append(
@@ -35,7 +35,7 @@ def traverse_layer(gid_json, layer):
         "isVisible": layer.get("isVisible", True),
         "isLocked": layer.get("isLocked", False),
         "isExpanded": layer.get("isExpanded", False),
-        "elements": []  # store elements
+        "elements": []  # store elements inside the layer
     }
     # process each elements
     for element_id in layer_element_ids:
@@ -43,8 +43,6 @@ def traverse_layer(gid_json, layer):
         if element:
             layer_result["elements"].append(
                     traverse_element(gid_json, element))
-            #print(json.dumps(traverse_element(gid_json, element),
-            #      indent=4, ensure_ascii=False))
 
     return layer_result
 

@@ -9,38 +9,28 @@ import math
 
 
 def apply_transform(data, transform):
-    """Applies localTransform to pathGeometry data."""
-    #transformed = apply_scale(data, transform.get("scale"))
-    transformed = apply_rotation(data, transform.get("rotation"))
-    #transformed = apply_shear(transformed, transform.get("shear"))
-    transformed = apply_translation(data, transform.get("translation"))
+    """Applies the given transform to the pathGeometry."""
+    translation = transform.get("translation")
+    data = apply_translation(data, translation)
+    data = apply_shear(data, transform.get("shear"), translation)
+    data = apply_scale(data, transform.get("scale"), translation)
+    data = apply_rotation(data, transform.get("rotation"), translation)
 
-    return transformed
+
+
+    return data
+
 
 def apply_translation(data, translation):
     """Applies translation to pathGeometry nodes."""
     tx, ty = translation
     transformed_nodes = []
-
     for node in data["nodes"]:
-        transformed_node = {
-            "anchorPoint": [
-                node["anchorPoint"][0] + tx,
-                node["anchorPoint"][1] + ty
-            ],
-            "inPoint": [
-                node["inPoint"][0] + tx,
-                node["inPoint"][1] + ty
-            ],
-            "outPoint": [
-                node["outPoint"][0] + tx,
-                node["outPoint"][1] + ty
-            ],
-            "nodeType": node["nodeType"],
-            "cornerRadius": node["cornerRadius"],
-        }
+        transformed_node = { "nodeType": node["nodeType"], "cornerRadius": node["cornerRadius"] }
+        for point in ["anchorPoint", "inPoint", "outPoint"]:
+            x, y = node[point]
+            transformed_node[point] = [x + tx, y + ty]
         transformed_nodes.append(transformed_node)
-
     # returns new geometry data.
     return {
         "closed": data["closed"],
@@ -48,59 +38,41 @@ def apply_translation(data, translation):
     }
 
 
-def apply_rotation(data, rotation):
-    """Applies rotation (around center) to pathGeometry nodes."""
-    # rotation is in radians
-    cos_theta = math.cos(rotation)
-    sin_theta = math.sin(rotation)
+def apply_rotation(data, angle, origin=(0, 0)):
+    """Applies rotation to pathGeometry nodes."""
+    ox, oy = origin
     transformed_nodes = []
+    for node in data["nodes"]:
+        transformed_node = { "nodeType": node["nodeType"], "cornerRadius": node["cornerRadius"] }
+        for point in ["anchorPoint", "inPoint", "outPoint"]:
+            x, y = node[point]
+            x -= ox
+            y -= oy
+            rotated_x = x * math.cos(angle) - y * math.sin(angle)
+            rotated_y = x * math.sin(angle) + y * math.cos(angle)
+            transformed_node[point] = [rotated_x + ox, rotated_y + oy]
+        transformed_nodes.append(transformed_node)
+    return {
+        "closed": data["closed"],
+        "nodes": transformed_nodes
+    }
 
-    # Calculate the center of the bounding box
-    center_x, center_y = calculate_bbox_center(data["nodes"])
+
+def apply_scale(data, scale, origin=(0, 0)):
+    """Applies scale to pathGeometry nodes."""
+    sx, sy = scale
+    ox, oy = origin
+    transformed_nodes = []
 
     for node in data["nodes"]:
-        # Move to origin
-        anchor_x, anchor_y = node["anchorPoint"]
-        in_x, in_y = node["inPoint"]
-        out_x, out_y = node["outPoint"]
-
-        anchor_x -= center_x
-        anchor_y -= center_y
-        in_x -= center_x
-        in_y -= center_y
-        out_x -= center_x
-        out_y -= center_y
-
-        # Apply rotation
-        new_anchor = [
-            cos_theta * anchor_x - sin_theta * anchor_y,
-            sin_theta * anchor_x + cos_theta * anchor_y,
-        ]
-        new_in = [
-            cos_theta * in_x - sin_theta * in_y,
-            sin_theta * in_x + cos_theta * in_y,
-        ]
-        new_out = [
-            cos_theta * out_x - sin_theta * out_y,
-            sin_theta * out_x + cos_theta * out_y,
-        ]
-
-        # Move back from origin
-        new_anchor[0] += center_x
-        new_anchor[1] += center_y
-        new_in[0] += center_x
-        new_in[1] += center_y
-        new_out[0] += center_x
-        new_out[1] += center_y
-
-        # Create transformed node
-        transformed_node = {
-            "anchorPoint": new_anchor,
-            "inPoint": new_in,
-            "outPoint": new_out,
-            "nodeType": node["nodeType"],
-            "cornerRadius": node["cornerRadius"],
-        }
+        transformed_node = { "nodeType": node["nodeType"], "cornerRadius": node["cornerRadius"] }
+        for point in ["anchorPoint", "inPoint", "outPoint"]:
+            x, y = node[point]
+            x -= ox
+            y -= oy
+            scaled_x = x * sx
+            scaled_y = y * sy
+            transformed_node[point] = [scaled_x + ox, scaled_y + oy]
         transformed_nodes.append(transformed_node)
 
     return {
@@ -109,48 +81,19 @@ def apply_rotation(data, rotation):
     }
 
 
-def apply_scale(data, scale):
-    """Applies scaling (around center) to pathGeometry nodes."""
-    sx, sy = scale  # scale coefficients
+def apply_shear(data, shear, origin=(0, 0)):
+    """Applies shear (skewX) to pathGeometry nodes."""
+    ox, oy = origin
     transformed_nodes = []
-
-    # Calculate the center of the bounding box
-    center_x, center_y = calculate_bbox_center(data["nodes"])
 
     for node in data["nodes"]:
-        # Move to origin
-        anchor_x, anchor_y = node["anchorPoint"]
-        in_x, in_y = node["inPoint"]
-        out_x, out_y = node["outPoint"]
-
-        anchor_x -= center_x
-        anchor_y -= center_y
-        in_x -= center_x
-        in_y -= center_y
-        out_x -= center_x
-        out_y -= center_y
-
-        # Apply scaling
-        new_anchor = [anchor_x * sx, anchor_y * sy]
-        new_in = [in_x * sx, in_y * sy]
-        new_out = [out_x * sx, out_y * sy]
-
-        # Move back from origin
-        new_anchor[0] += center_x
-        new_anchor[1] += center_y
-        new_in[0] += center_x
-        new_in[1] += center_y
-        new_out[0] += center_x
-        new_out[1] += center_y
-
-        # Create transformed node
-        transformed_node = {
-            "anchorPoint": new_anchor,
-            "inPoint": new_in,
-            "outPoint": new_out,
-            "nodeType": node["nodeType"],
-            "cornerRadius": node["cornerRadius"] * max(abs(sx), abs(sy)),  # Adapt corner radius
-        }
+        transformed_node = { "nodeType": node["nodeType"], "cornerRadius": node["cornerRadius"] }
+        for point in ["anchorPoint", "inPoint", "outPoint"]:
+            x, y = node[point]
+            x -= ox
+            y -= oy
+            sheared_x = x + y * shear
+            transformed_node[point] = [sheared_x + ox, y + oy]
         transformed_nodes.append(transformed_node)
 
     return {
@@ -159,76 +102,10 @@ def apply_scale(data, scale):
     }
 
 
-def apply_shear(data, shear):
-    """
-    Applies a SkewX (shear along the X-axis) transformation to pathGeometry nodes.
-    The transformation is applied around the center of the bounding box.
-
-    Args:
-        data (dict): A dictionary containing pathGeometry data with nodes.
-        shear (float): The shear factor in radians to be applied along the X-axis.
-
-    Returns:
-        dict: A new pathGeometry dictionary with sheared nodes.
-    """
-    # Calculate the center of the bounding box
-    nodes = data["nodes"]
-    min_x = min(node["anchorPoint"][0] for node in nodes)
-    max_x = max(node["anchorPoint"][0] for node in nodes)
-    min_y = min(node["anchorPoint"][1] for node in nodes)
-    max_y = max(node["anchorPoint"][1] for node in nodes)
-
-    center_x = (min_x + max_x) / 2
-    center_y = (min_y + max_y) / 2
-
-    transformed_nodes = []
-
-    for node in nodes:
-        # Extract original coordinates
-        anchor_x, anchor_y = node["anchorPoint"]
-        in_x, in_y = node["inPoint"]
-        out_x, out_y = node["outPoint"]
-
-        # Translate to origin (center of bounding box)
-        anchor_x -= center_x
-        anchor_y -= center_y
-        in_x -= center_x
-        in_y -= center_y
-        out_x -= center_x
-        out_y -= center_y
-
-        # Apply shear transformation: x' = x + shear * y
-        new_anchor = [anchor_x + shear * anchor_y, anchor_y]
-        new_in = [in_x + shear * in_y, in_y]
-        new_out = [out_x + shear * out_y, out_y]
-
-        # Translate back to original center
-        new_anchor[0] += center_x
-        new_anchor[1] += center_y
-        new_in[0] += center_x
-        new_in[1] += center_y
-        new_out[0] += center_x
-        new_out[1] += center_y
-
-        # Create transformed node
-        transformed_node = {
-            "anchorPoint": new_anchor,
-            "inPoint": new_in,
-            "outPoint": new_out,
-            "nodeType": node["nodeType"],
-            "cornerRadius": node["cornerRadius"],
-        }
-        transformed_nodes.append(transformed_node)
-
-    # Return updated geometry data
-    return {
-        "closed": data["closed"],
-        "nodes": transformed_nodes
-    }
-
-
-def calculate_bbox_center(nodes):
+def calculate_bbox_center(data):
     """Calculates the center of the bounding box for given nodes."""
+    nodes = data["nodes"]
+
     min_x = min(node["anchorPoint"][0] for node in nodes)
     max_x = max(node["anchorPoint"][0] for node in nodes)
     min_y = min(node["anchorPoint"][1] for node in nodes)
@@ -243,6 +120,13 @@ def calculate_bbox_center(nodes):
     print(f"length: {len_x}, {len_y}")
 
     return center_x, center_y
+
+
+def calculate_origin(nodes, translation):
+    """Return origin by combining translation and center of bounding box."""
+    ox, oy = calculate_bbox_center(nodes)
+    tx, ty = translation
+    return ox+tx, oy+ty
 
 
 def create_group_transform(localTransform):

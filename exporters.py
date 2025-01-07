@@ -2,11 +2,14 @@
 VI exporters
 
 outputs svg file.
+
+! Major work has to be done in this and tools.py
 """
 
 
 import os
 import xml.etree.ElementTree as ET
+from xml.dom import minidom
 
 import tools as t
 
@@ -24,10 +27,11 @@ def create_svg(artboard, layers, file):
     for layer in layers:
         svg_layer = ET.Element("g", {
             "id": layer.get("name"),
-            "opacity": str(layer.get("opacity"))
+            "opacity": str(layer.get("opacity")),
+            "visibility": ("visible" if layer.get("isVisible") else "hidden")
         })
         elements = layer.get("elements")
-        for element in elements:
+        for element in elements: # ! cannot handle groups inside groups, or compoundPath(What?)
             # if the element is a group
             if element.get("groupElements", []):
                 root_transform = element.get("localTransform")
@@ -56,9 +60,14 @@ def create_svg(artboard, layers, file):
     # create output file directory
     output = os.path.join(directory, "result.svg")
 
-    # construct the tree and save svg file
-    tree = ET.ElementTree(svg)
-    tree.write(output, encoding="UTF-8", xml_declaration=True)
+    # format svg tree
+    rough_string = ET.tostring(svg, 'utf-8')
+    reparsed = minidom.parseString(rough_string)
+    pretty_svg = reparsed.toprettyxml(indent="\t")
+
+    # output prettified svg
+    with open(output, "w", encoding="utf-8") as output_file:
+        output_file.write(pretty_svg)
 
 
 def create_svg_element(element):
@@ -71,16 +80,15 @@ def create_svg_element(element):
     """
     return ET.Element("path", {
         "id": element.get("name"),
-        "fill": "none",
+        "fill": "none", # TODO apply actual style
         "stroke": "#ff8585",
         "stroke-width": "3",
         "stroke-linecap": "round",
         "stroke-linejoin": "round",
-        "transform": t.create_group_transform(element.get("localTransform")),
+        #"transform": t.create_group_transform(element.get("localTransform")), # TODO Remove transform dependency
         "d": path_geometry_to_svg_path(
-            element.get("pathGeometry")
-            #t.apply_transform(element.get("pathGeometry"),
-                                #element.get("localTransform"))
+            #element.get("pathGeometry")
+            t.apply_transform(element.get("pathGeometry"), element.get("localTransform"))
         )
     })
 
