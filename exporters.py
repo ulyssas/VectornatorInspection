@@ -11,11 +11,16 @@ import os
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
-import tools as t
+import tools_path as tp
+import styles_path as sp
 
 
 def create_svg(artboard, layers, file):
     """Exports svg file. Under construction."""
+
+    # TODO if there's something inside groupElements, VI has to ignore stylables~pathGeometry
+    # ! cannot handle groups inside groups, or compoundPath(What?)
+
     # SVG header
     svg = create_svg_header(artboard)
 
@@ -31,13 +36,13 @@ def create_svg(artboard, layers, file):
             "visibility": ("visible" if layer.get("isVisible") else "hidden")
         })
         elements = layer.get("elements")
-        for element in elements: # ! cannot handle groups inside groups, or compoundPath(What?)
+        for element in elements:
             # if the element is a group
             if element.get("groupElements", []):
                 root_transform = element.get("localTransform")
                 svg_group = ET.Element("g", {
                     "id": layer.get("name"),
-                    "transform": t.create_group_transform(root_transform)
+                    "transform": tp.create_group_transform(root_transform)
                 })
                 group_elements = element.get("groupElements")
                 print(f"ELEMENTS {group_elements}")
@@ -76,21 +81,44 @@ def create_svg_element(element):
 
     Custom style does not work right now.
 
-    path transform is not optimal, I really want apply_transform to work
+    TODO apply actual style
     """
-    return ET.Element("path", {
+
+    stroke_style = element.get("strokeStyle", None)
+    fill = element.get("fill")
+
+    # Decode stroke style only if it exists
+    if stroke_style:
+        decoded_stroke_style = sp.decode_stroke_style(stroke_style)
+        stroke = decoded_stroke_style.get("stroke", "none")
+        stroke_width = decoded_stroke_style.get("stroke-width")
+        stroke_linecap = decoded_stroke_style.get("stroke-linecap")
+        stroke_linejoin = decoded_stroke_style.get("stroke-linejoin")
+    else:
+        stroke = None
+        stroke_width = None
+        stroke_linecap = None
+        stroke_linejoin = None
+
+    attributes = {
         "id": element.get("name"),
-        "fill": "none", # TODO apply actual style
-        "stroke": "#ff8585",
-        "stroke-width": "3",
-        "stroke-linecap": "round",
-        "stroke-linejoin": "round",
-        #"transform": t.create_group_transform(element.get("localTransform")), # TODO Remove transform dependency
+        "fill": "none",
         "d": path_geometry_to_svg_path(
-            #element.get("pathGeometry")
-            t.apply_transform(element.get("pathGeometry"), element.get("localTransform"))
+            tp.apply_transform(element.get("pathGeometry"), element.get("localTransform"))
         )
-    })
+    }
+
+    # Only add stroke-related attributes if stroke exists
+    if stroke is not None:
+        attributes["stroke"] = stroke
+    if stroke_width is not None:
+        attributes["stroke-width"] = stroke_width
+    if stroke_linecap is not None:
+        attributes["stroke-linecap"] = stroke_linecap
+    if stroke_linejoin is not None:
+        attributes["stroke-linejoin"] = stroke_linejoin
+
+    return ET.Element("path", attributes)
 
 
 def create_svg_header(artboard):

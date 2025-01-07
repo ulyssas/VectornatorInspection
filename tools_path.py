@@ -1,7 +1,7 @@
 """
-VI tools
+VI path tools
 
-miscellaneous functions
+functions to manipulate localTransform
 """
 
 
@@ -15,8 +15,6 @@ def apply_transform(data, transform):
     data = apply_shear(data, transform.get("shear"), translation)
     data = apply_scale(data, transform.get("scale"), translation)
     data = apply_rotation(data, transform.get("rotation"), translation)
-
-
 
     return data
 

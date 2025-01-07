@@ -50,15 +50,14 @@ def traverse_layer(gid_json, layer):
 def traverse_element(gid_json, element):
     """Traverse specified element and extract their attributes."""
 
-    # TODO if there's something inside groupElements, VI has to ignore stylables~pathGeometry
-
     # easier-to-process data structure
     element_result = {
         "name": element.get("name", "Unnamed Element"),
         "localTransform": None,
         "stylable": None,
         "abstractPath": None,
-        "strokeStyle": None,
+        "strokeStyle": None, # what is fillRule/strokeType?
+        "fill": None,
         "path": None,
         "pathGeometry": None,
         "groupElements": []  # store group elements
@@ -88,6 +87,12 @@ def traverse_element(gid_json, element):
             if stroke_style_id is not None:
                 stroke_style = get_stroke_style(gid_json, stroke_style_id)
                 element_result["strokeStyle"] = stroke_style
+
+            # fill
+            fill_id = abstract_path.get("fillId")
+            if fill_id is not None:
+                fill = get_fill(gid_json, fill_id)
+                element_result["fill"] = fill
 
             # Path
             path_id = abstract_path.get(
@@ -158,6 +163,12 @@ def get_stroke_style(gid_json, index):
     """Get pathStrokeStyle from gid_json."""
     stroke_styles = gid_json.get("pathStrokeStyles", [])
     return stroke_styles[index]
+
+
+def get_fill(gid_json, index):
+    """Get fill from gid_json."""
+    fills = gid_json.get("fills", [])
+    return fills[index]
 
 
 def get_path(gid_json, index):
