@@ -12,7 +12,6 @@ Vectornator Inspection aims to convert .vectornator / .curve files into SVG.
 * Bitmap(png) embedding.
 * Automatically uses `Pixels` as units. Curve supports other units as well, which will be added later.
 * text, Curve has weired text format (base64-encoded binary plist). I made the decoder, but I haven't done anything else.
-* SVG styling. This project as of now only reads pathGeometry. It doesn't apply styles(fills, strokes, caps, etc).
 * Other stuffs(line styles, multiple artboards, masks) I'm not sure how to implement them.
 
 Any amount of contribution is welcome!
