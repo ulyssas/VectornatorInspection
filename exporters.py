@@ -78,45 +78,56 @@ def create_svg(artboard, layers, file):
 def create_svg_element(element):
     """
     Converts an element defined in VI Decoders.traverse_element() to an SVG path.
-
-    Custom style does not work right now.
-
-    TODO apply actual style
     """
 
     stroke_style = element.get("strokeStyle", None)
-    fill = element.get("fill")
+    fill_style = element.get("fill")
 
     # Decode stroke style only if it exists
     if stroke_style:
         decoded_stroke_style = sp.decode_stroke_style(stroke_style)
         stroke = decoded_stroke_style.get("stroke", "none")
         stroke_width = decoded_stroke_style.get("stroke-width")
+        stroke_opacity = decoded_stroke_style.get("stroke-opacity")
         stroke_linecap = decoded_stroke_style.get("stroke-linecap")
         stroke_linejoin = decoded_stroke_style.get("stroke-linejoin")
     else:
-        stroke = None
-        stroke_width = None
-        stroke_linecap = None
-        stroke_linejoin = None
+        stroke = "none"
+        stroke_width = "0"
+        stroke_opacity = "1"
+        stroke_linecap = "butt"
+        stroke_linejoin = "miter"
+
+    # Decode fill only if it exists
+    if fill_style:
+        decoded_fill = sp.decode_fill(fill_style)
+        fill = decoded_fill.get("fill")
+        fill_opacity = decoded_fill.get("fill-opacity")
+    else:
+        fill = "none"
+        fill_opacity = "1"
+
+    # Create style attribute
+    style_parts = [
+        f"display:{'none' if element.get('isHidden') else 'inline'}",
+        f"fill:{fill or 'none'}",
+        f"fill-opacity:{fill_opacity}",
+        f"stroke:{stroke}",
+        f"stroke-width:{stroke_width}",
+        f"stroke-opacity:{stroke_opacity}",
+        f"stroke-linecap:{stroke_linecap}",
+        f"stroke-linejoin:{stroke_linejoin}"
+    ]
+    style = ";".join(style_parts)
 
     attributes = {
         "id": element.get("name"),
-        "fill": "none",
+        #"style": "fill:#565656;fill-opacity:0.000000;stroke:#000000;stroke-width:10;stroke-opacity:1;stroke-linecap:butt;stroke-linejoin:round",
+        "style": style,
         "d": path_geometry_to_svg_path(
             tp.apply_transform(element.get("pathGeometry"), element.get("localTransform"))
         )
     }
-
-    # Only add stroke-related attributes if stroke exists
-    if stroke is not None:
-        attributes["stroke"] = stroke
-    if stroke_width is not None:
-        attributes["stroke-width"] = stroke_width
-    if stroke_linecap is not None:
-        attributes["stroke-linecap"] = stroke_linecap
-    if stroke_linejoin is not None:
-        attributes["stroke-linejoin"] = stroke_linejoin
 
     return ET.Element("path", attributes)
 

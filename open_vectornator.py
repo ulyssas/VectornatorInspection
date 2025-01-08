@@ -68,7 +68,7 @@ def open_vectornator(file):
     except KeyError as e:
         logging.error(f"Required file missing in the archive: {e}")
     except ValueError as e:
-        logging.error(f"Vectornator file is not supported. {e}")
+        logging.error(f"An error occurred while reading file. {traceback.format_exc()}")
     except Exception as e:
         logging.error(
             f"An unexpected error occurred: {traceback.format_exc()}")

@@ -31,14 +31,24 @@ def decode_stroke_style(stroke_style):
     width = stroke_style.get("width")
 
     stroke_style_result = {
-        "stroke": color_to_rgb_tuple(color),
+        "stroke": rgba_to_hex(color_to_rgb_tuple(color)),
         "stroke-width": str(width),
+        "stroke-opacity": color_to_rgb_tuple(color)[3],
         "stroke-linecap": cap_to_svg(basic_style.get("cap",  0)),
         "stroke-dasharray": None,
         "stroke-linejoin": join_to_svg(basic_style.get("join",  1))
     }
 
     return stroke_style_result
+
+
+def decode_fill(fill):
+    color = fill.get("color", {}).get("_0", {})
+    if color is not None:
+        return {
+            "fill": rgba_to_hex(color_to_rgb_tuple(color)),
+            "fill-opacity": color_to_rgb_tuple(color)[3]
+        }
 
 
 def cap_to_svg(cap):
@@ -101,8 +111,8 @@ def hsba_to_rgba(hsba):
     # Convert HSB to RGB
     r, g, b = colorsys.hsv_to_rgb(hue, saturation, brightness)
 
-    # Return RGBA as formatted string (Example: rgba(255, 0, 0, 0.5))
-    return f"rgba({r*255}, {g*255}, {b*255}, {alpha})"
+    # Return RGBA as tuple.
+    return r, g, b, alpha
 
 
 def rgba_to_tuple(rgba):
@@ -124,5 +134,15 @@ def rgba_to_tuple(rgba):
     blue = rgba.get("blue", 0)
     alpha = rgba.get("alpha", 1)
 
-    # Return RGBA as formatted string (Example: rgba(255, 0, 0, 0.5))
-    return f"rgba({red*255}, {green*255}, {blue*255}, {alpha})"
+    # Return RGBA as tuple.
+    return red, green, blue, alpha
+
+
+def rgba_to_hex(rgba):
+    """Converts RGBA tuple into str hex(#RRGGBB)."""
+    r, g, b, a = rgba
+    r = int(r * 255)
+    g = int(g * 255)
+    b = int(b * 255)
+
+    return f"#{r:02X}{g:02X}{b:02X}"

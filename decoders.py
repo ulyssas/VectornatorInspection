@@ -53,6 +53,10 @@ def traverse_element(gid_json, element):
     # easier-to-process data structure
     element_result = {
         "name": element.get("name", "Unnamed Element"),
+        "blendMode": element.get("blendMode", 0),
+        "isHidden": element.get("isHidden", False),
+        # isLocked requires sodipodi:insensitive
+        "opacity": element.get("opacity", 1),
         "localTransform": None,
         "stylable": None,
         "abstractPath": None,
