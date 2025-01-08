@@ -23,6 +23,8 @@ def read_gid_json(gid_json):
         layers_result.append(
                 traverse_layer(gid_json, layer))
 
+    print(layers_result)
+
     return layers_result
 
 
@@ -62,16 +64,14 @@ def traverse_element(gid_json, element):
         "abstractPath": None,
         "strokeStyle": None, # what is fillRule/strokeType?
         "fill": None,
-        "path": None,
-        "pathGeometry": None,
+        "pathGeometry": [],
         "groupElements": []  # store group elements
     }
 
     # localTransform
     local_transform_id = element.get("localTransformId")
     if local_transform_id is not None:
-        element_result["localTransform"] = get_local_transform(
-            gid_json, local_transform_id)
+        element_result["localTransform"] = get_local_transform(gid_json, local_transform_id)
 
     # Stylable
     stylable_id = element.get("subElement", {}).get("stylable", {}).get("_0")
@@ -80,8 +80,7 @@ def traverse_element(gid_json, element):
         element_result["stylable"] = stylable
 
         # Abstract Path
-        abstract_path_id = stylable.get("subElement", {}).get(
-            "abstractPath", {}).get("_0")
+        abstract_path_id = stylable.get("subElement", {}).get("abstractPath", {}).get("_0")
         if abstract_path_id is not None:
             abstract_path = get_abstract_path(gid_json, abstract_path_id)
             element_result["abstractPath"] = abstract_path
@@ -99,19 +98,29 @@ def traverse_element(gid_json, element):
                 element_result["fill"] = fill
 
             # Path
-            path_id = abstract_path.get(
-                "subElement", {}).get("path", {}).get("_0")
+            path_id = abstract_path.get("subElement", {}).get("path", {}).get("_0")
             if path_id is not None:
                 path = get_path(gid_json, path_id)
-                element_result["path"] = path
 
                 # Path Geometry
                 geometry_id = path.get("geometryId")
                 if geometry_id is not None:
                     path_geometry = get_path_geometries(gid_json, geometry_id)
-                    element_result["pathGeometry"] = path_geometry
+                    element_result["pathGeometry"].append(path_geometry)
 
-    # Grouping
+            # compoundPath
+            compound_path_id = abstract_path.get("subElement", {}).get("compoundPath", {}).get("_0")
+            if compound_path_id is not None:
+                compound_path = get_compound_path(gid_json, compound_path_id)
+
+                # Path Geometries (subpath)
+                subpath_ids = compound_path.get("subpathIds", [])
+                if subpath_ids is not None:
+                    for id in subpath_ids:
+                        path_geometry = get_path_geometries(gid_json, id)
+                        element_result["pathGeometry"].append(path_geometry)
+
+    # Group
     group_id = element.get("subElement", {}).get("group", {}).get("_0")
     if group_id is not None:
         # get elements inside group
@@ -179,6 +188,12 @@ def get_path(gid_json, index):
     """Get path from gid_json."""
     paths = gid_json.get("paths", [])
     return paths[index]
+
+
+def get_compound_path(gid_json, index):
+    """Get compoundPath from gid_json."""
+    compound_paths = gid_json.get("compoundPaths", [])
+    return compound_paths[index]
 
 
 def get_path_geometries(gid_json, index):

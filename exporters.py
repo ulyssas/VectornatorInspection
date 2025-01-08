@@ -30,31 +30,7 @@ def create_svg(artboard, layers, file):
 
     # layer as g
     for layer in layers:
-        svg_layer = ET.Element("g", {
-            "id": layer.get("name"),
-            "opacity": str(layer.get("opacity")),
-            "visibility": ("visible" if layer.get("isVisible") else "hidden")
-        })
-        elements = layer.get("elements")
-        for element in elements:
-            # if the element is a group
-            if element.get("groupElements", []):
-                root_transform = element.get("localTransform")
-                svg_group = ET.Element("g", {
-                    "id": layer.get("name"),
-                    "transform": tp.create_group_transform(root_transform)
-                })
-                group_elements = element.get("groupElements")
-                print(f"ELEMENTS {group_elements}")
-                for group_element in group_elements:
-                    svg_group_element = create_svg_element(group_element)
-                    svg_group.append(svg_group_element)
-                svg_layer.append(svg_group)
-
-            # if it is not a group
-            else:
-                svg_element = create_svg_element(element)
-                svg_layer.append(svg_element)
+        svg_layer = create_svg_layer(layer)
         svg.append(svg_layer)
 
     ET.dump(svg)
@@ -73,6 +49,54 @@ def create_svg(artboard, layers, file):
     # output prettified svg
     with open(output, "w", encoding="utf-8") as output_file:
         output_file.write(pretty_svg)
+
+
+def create_svg_layer(layer):
+    """
+    Converts a layer defined in VI Decoders.traverse_layer() to an SVG group.
+    """
+
+    # Inkscape only support style tag (Opacity/Visibility DIDNOT work)
+    style_parts = [
+        f"display:{'inline' if layer.get('isVisible') else 'none'}",
+        f"opacity:{layer.get('opacity')}"
+    ]
+    style_layer = ";".join(style_parts)
+
+    svg_layer = ET.Element("g", {
+        "id": layer.get("name"),
+        "style": style_layer,
+    })
+    elements = layer.get("elements")
+    for element in elements:
+        # if the element is a group
+        if element.get("groupElements", []):
+            root_transform = element.get("localTransform")
+            style_parts = [
+                f"display:{'none' if element.get('isHidden') else 'inline'}",
+                f"opacity:{element.get('opacity')}"
+            ]
+            style_group = ";".join(style_parts)
+
+            svg_group = ET.Element("g", {
+                "id": element.get("name"),
+                "style": style_group,
+                "transform": tp.create_group_transform(root_transform)
+            })
+            group_elements = element.get("groupElements")
+            #print(f"ELEMENTS {group_elements}")
+            for group_element in group_elements:
+                svg_group_element = create_svg_element(group_element)
+                svg_group.append(svg_group_element)
+
+            svg_layer.append(svg_group)
+
+        # if it is not a group
+        else:
+            svg_element = create_svg_element(element)
+            svg_layer.append(svg_element)
+
+    return svg_layer
 
 
 def create_svg_element(element):
@@ -112,6 +136,7 @@ def create_svg_element(element):
         f"display:{'none' if element.get('isHidden') else 'inline'}",
         f"fill:{fill or 'none'}",
         f"fill-opacity:{fill_opacity}",
+        f"fill-rule:{'evenodd'}", # ?
         f"stroke:{stroke}",
         f"stroke-width:{stroke_width}",
         f"stroke-opacity:{stroke_opacity}",
@@ -120,13 +145,18 @@ def create_svg_element(element):
     ]
     style = ";".join(style_parts)
 
+    geometries = element.get("pathGeometry")
+    transformed = []
+
+    for path in geometries:
+        print(path)
+        transformed.append(tp.apply_transform(path, element.get("localTransform")))
+
     attributes = {
         "id": element.get("name"),
         #"style": "fill:#565656;fill-opacity:0.000000;stroke:#000000;stroke-width:10;stroke-opacity:1;stroke-linecap:butt;stroke-linejoin:round",
         "style": style,
-        "d": path_geometry_to_svg_path(
-            tp.apply_transform(element.get("pathGeometry"), element.get("localTransform"))
-        )
+        "d": path_geometry_to_svg_path(transformed)
     }
 
     return ET.Element("path", attributes)
@@ -163,8 +193,21 @@ def create_svg_header(artboard):
     return svg_header
 
 
-def path_geometry_to_svg_path(data):
-    """Converts pathGeometry data to svg path (d={path})."""
+def path_geometry_to_svg_path(datas):
+    """Converts pathGeometry array data to svg path (d={path})."""
+    svg_paths = []
+
+    # Iterate through all path geometries
+    for path_geometry in datas:
+        # Convert the geometry to an SVG path and append it
+        svg_paths.append(single_path_geometry_to_svg_path(path_geometry))
+
+    # Join all path strings with spaces
+    return " ".join(svg_paths)
+
+
+def single_path_geometry_to_svg_path(data):
+    """Converts single pathGeometry data to svg path (d={path})."""
     nodes = data["nodes"]
     closed = data.get("closed", False)
     svg_path = ""
