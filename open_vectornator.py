@@ -5,7 +5,7 @@ description: Linearity Curve file reader(5.18.x) with tons of AI code
 
 usage: python open_vectornator.py file.curve
 
-what works (2025/01/09): limited SVG export (no text, bitmap, other units)
+what works (2025/01/09): limited SVG export (no text, other units)
 """
 
 import argparse
@@ -29,7 +29,7 @@ def open_vectornator(file):
     """
     Open and process a Linearity Curve (.curve) file.
 
-    Vectornator (.vectornator) file is not supported yet.
+    Vectornator (.vectornator) file is not supported.
 
     You can upgrade file format by opening vectornator file in Linearity Curve, then export as .curve.
     """
@@ -49,7 +49,8 @@ def open_vectornator(file):
             version = document.get("appVersion", "unknown app version")
             artboard_paths = drawing_data.get("artboardPaths", [])
 
-            print(f"Unit: {units}")  # will be used later (as Inkscape attribute)
+            # will be used later (as Inkscape attribute)
+            print(f"Unit: {units}")
 
             if not artboard_paths:
                 logging.warning("No artboard paths found in the document.")
@@ -63,13 +64,14 @@ def open_vectornator(file):
             if check_if_curve(version):
                 print(f"Supported version: {version}.")
                 artboard = gid_json.get("artboards")[0]
-                layers = d.read_gid_json(gid_json)
+                layers = d.read_gid_json(archive, gid_json)
+                ext.read_dat_from_zip
 
             # if the file is Vectornator
             else:
                 # Does not work yet
-                #artboard = d.vectornator_to_artboard(gid_json)
-                #layers = gid_json.get("layers", [])
+                # artboard = d.vectornator_to_artboard(gid_json)
+                # layers = gid_json.get("layers", [])
                 raise ValueError(
                     f"Unsupported version: {version}. Version 5.0.0 or up is required.")
 
@@ -84,6 +86,8 @@ def open_vectornator(file):
     except ValueError as e:
         logging.error(
             f"An error occurred while reading file. {traceback.format_exc()}")
+    except NotImplementedError as e:
+        logging.error(f"File contains unsupported feature. {e}")
     except Exception as e:
         logging.error(
             f"An unexpected error occurred: {traceback.format_exc()}")

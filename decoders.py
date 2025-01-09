@@ -3,11 +3,23 @@ VI decoders
 
 converts Linearity Curve (5.x) JSON data to usable data.
 
+Only tested for fileFormatVersion 44.
+
+You can upgrade file format by opening vectornator file in Linearity Curve, then export as .curve.
+
+Curve 5.18.0 ~ 5.18.4 uses fileFormatVersion 44, while Curve 5.1.1 and 5.1.2 uses 21.
 """
 
 
-def read_gid_json(gid_json):
-    """Reads gid.json and returns simply-structured data."""
+import extractors as ext
+
+
+def read_gid_json(archive, gid_json):
+    """
+    Reads gid.json and returns simply-structured data.
+
+    Argument `archive` is needed for image embedding.
+    """
     # "layer_ids" contain layer indexes, while "layers" contain existing layers
     layer_ids = gid_json.get("artboards", [])[0].get("layerIds", [])
     layers = gid_json.get("layers", [])
@@ -17,14 +29,14 @@ def read_gid_json(gid_json):
     for layer_id in layer_ids:
         layer = layers[layer_id]
         layers_result.append(
-            traverse_layer(gid_json, layer))
+            traverse_layer(archive, gid_json, layer))
 
-    print(layers_result)
+    #print(layers_result)
 
     return layers_result
 
 
-def traverse_layer(gid_json, layer):
+def traverse_layer(archive, gid_json, layer):
     """Traverse specified layer and extract their attributes."""
     layer_element_ids = layer.get("elementIds", [])
     layer_result = {
@@ -40,12 +52,12 @@ def traverse_layer(gid_json, layer):
         element = get_element(gid_json, element_id)
         if element:
             layer_result["elements"].append(
-                traverse_element(gid_json, element))
+                traverse_element(archive, gid_json, element))
 
     return layer_result
 
 
-def traverse_element(gid_json, element):
+def traverse_element(archive, gid_json, element):
     """Traverse specified element and extract their attributes."""
 
     # easier-to-process data structure
@@ -56,6 +68,7 @@ def traverse_element(gid_json, element):
         # isLocked requires sodipodi:insensitive
         "opacity": element.get("opacity", 1),
         "localTransform": None,
+        "imageData": None,  # will be base64 string
         "stylable": None,
         "abstractPath": None,
         "abstractText": None,
@@ -71,6 +84,15 @@ def traverse_element(gid_json, element):
     if local_transform_id is not None:
         element_result["localTransform"] = get_local_transform(
             gid_json, local_transform_id)
+
+    # Image
+    image_id = element.get("subElement", {}).get("image", {}).get("_0")
+    if image_id is not None:
+        # relativePath contains *.dat (bitmap data)
+        # sharedFileImage doesn't exist in 5.1.1 (file version 21) document
+        image = get_image(gid_json, image_id).get("imageData", {}).get("sharedFileImage", {}).get("_0")
+        image_data = get_image_data(gid_json, image).get("relativePath", "")
+        element_result["imageData"] = ext.read_dat_from_zip(archive, image_data)
 
     # Stylable
     stylable_id = element.get("subElement", {}).get("stylable", {}).get("_0")
@@ -94,8 +116,7 @@ def traverse_element(gid_json, element):
             # fill
             fill_id = abstract_path.get("fillId")
             if fill_id is not None:
-                fill = get_fill(gid_json, fill_id)
-                element_result["fill"] = fill
+                element_result["fill"] = get_fill(gid_json, fill_id)
 
             # Path
             path_id = abstract_path.get(
@@ -123,18 +144,20 @@ def traverse_element(gid_json, element):
                         element_result["pathGeometry"].append(path_geometry)
 
         # Abstract Text
-        abstract_text_id = element.get("subElement", {}).get(
-            "abstractText", {}).get("_0")
+        abstract_text_id = stylable.get("subElement", {}).get("abstractText", {}).get("_0")
         if abstract_text_id is not None:
-            abstract_text = get_abstract_text(gid_json, abstract_text_id)
-            element_result["abstractText"] = abstract_text
+            #abstract_text = get_abstract_text(gid_json, abstract_text_id)
+            #element_result["abstractText"] = abstract_text
+            raise NotImplementedError(f"Text is not supported.")
+            # TODO Add lines later
 
         # singleStyle
-        single_style_id = element.get("subElement", {}).get(
+        single_style_id = stylable.get("subElement", {}).get(
             "singleStyle", {}).get("_0")
         if single_style_id is not None:
             single_style = get_single_style(gid_json, single_style_id)
             element_result["singleStyle"] = single_style
+            # TODO Add lines later
 
     # Group
     group_id = element.get("subElement", {}).get("group", {}).get("_0")
@@ -147,7 +170,7 @@ def traverse_element(gid_json, element):
             if group_element:
                 # get group elements recursively
                 element_result["groupElements"].append(
-                    traverse_element(gid_json, group_element))
+                    traverse_element(archive, gid_json, group_element))
 
     return element_result
 
@@ -172,6 +195,18 @@ def get_local_transform(gid_json, index):
     """Get localTransform from gid_json."""
     local_transforms = gid_json.get("localTransforms", [])
     return local_transforms[index]
+
+
+def get_image(gid_json, index):
+    """Get image from gid_json."""
+    images = gid_json.get("images", [])
+    return images[index]
+
+
+def get_image_data(gid_json, index):
+    """Get imageData from gid_json."""
+    image_datas = gid_json.get("imageDatas", [])
+    return image_datas[index]
 
 
 def get_stylable(gid_json, index):

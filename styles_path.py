@@ -6,6 +6,8 @@ Converts non-text styles into svg styles.
 
 
 import colorsys
+import logging
+import traceback
 
 
 def decode_stroke_style(stroke_style):
@@ -43,8 +45,13 @@ def decode_stroke_style(stroke_style):
 
 
 def decode_fill(fill):
-    color = fill.get("color", {}).get("_0", {})
-    if color is not None:
+    color = fill.get("color", {}).get("_0")
+    gradient = fill.get("gradient", {}).get("_0")
+
+    if gradient is not None:
+        raise NotImplementedError(
+            f"Gradient fill is not supported.")
+    elif color is not None:
         return {
             "fill": rgba_to_hex(color_to_rgb_tuple(color)),
             "fill-opacity": color_to_rgb_tuple(color)[3]

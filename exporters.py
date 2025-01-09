@@ -5,9 +5,13 @@ outputs svg file.
 """
 
 
+import base64
 import os
 import xml.etree.ElementTree as ET
+from io import BytesIO
 from xml.dom import minidom
+
+from PIL import Image
 
 import styles_path as sp
 import tools_path as tp
@@ -45,6 +49,10 @@ def create_svg(artboard, layers, file):
     with open(output, "w", encoding="utf-8") as output_file:
         output_file.write(pretty_svg)
 
+    ## construct the tree and save svg file (unformatted svg)
+    #tree = ET.ElementTree(svg)
+    #tree.write(output, encoding="UTF-8", xml_declaration=True)
+
 
 def create_svg_layer(layer):
     """
@@ -73,6 +81,8 @@ def create_svg_layer(layer):
         # if it is not a group
         else:
             # Process individual elements
+            print(f"ELEMENT: {element}")
+            print(f"ELEMENTNAME: {element.get('name')}")
             svg_element = create_svg_element(element)
             svg_layer.append(svg_element)
 
@@ -120,11 +130,23 @@ def create_svg_group(group_element):
 
 def create_svg_element(element):
     """
+    Converts an element defined in VI Decoders.traverse_element() to an SVG element.
+    """
+    if element.get("pathGeometry"):
+        # convert to path element
+        return create_svg_path(element)
+    elif element.get("imageData"):
+        # convert to image element
+        return create_svg_image(element)
+
+
+def create_svg_path(path_element):
+    """
     Converts an element defined in VI Decoders.traverse_element() to an SVG path.
     """
 
-    stroke_style = element.get("strokeStyle", None)
-    fill_style = element.get("fill")
+    stroke_style = path_element.get("strokeStyle", None)
+    fill_style = path_element.get("fill")
 
     # Decode stroke style only if it exists
     if stroke_style:
@@ -152,8 +174,9 @@ def create_svg_element(element):
 
     # Create style attribute
     style_parts = [
-        f"display:{'none' if element.get('isHidden') else 'inline'}",
-        f"mix-blend-mode:{sp.blend_mode_to_svg(element.get('blendMode', 1))}",
+        f"display:{'none' if path_element.get('isHidden') else 'inline'}",
+        f"mix-blend-mode:{sp.blend_mode_to_svg(path_element.get('blendMode', 1))}",
+        f"opacity:{path_element.get('opacity', 1)}",
         f"fill:{fill or 'none'}",
         f"fill-opacity:{fill_opacity}",
         f"fill-rule:{'nonzero'}",  # ? nonzero or evenodd ?
@@ -165,21 +188,48 @@ def create_svg_element(element):
     ]
     style = ";".join(style_parts)
 
-    geometries = element.get("pathGeometry")
+    geometries = path_element.get("pathGeometry")
     transformed = []
 
     for path in geometries:
         print(path)
         transformed.append(tp.apply_transform(
-            path, element.get("localTransform")))
+            path, path_element.get("localTransform")))
 
     attributes = {
-        "id": element.get("name"),
+        "id": path_element.get("name"),
         "style": style,
         "d": path_geometry_to_svg_path(transformed)
     }
 
     return ET.Element("path", attributes)
+
+
+def create_svg_image(image_element):
+    """
+    Converts an element defined in VI Decoders.traverse_element() to an SVG image.
+    """
+    image = image_element.get("imageData", "")  # b64 data
+    transform = image_element.get("localTransform")
+    format, width, height = detect_image_format_and_size(image)
+
+    # Create style attribute
+    style_parts = [
+        f"display:{'none' if image_element.get('isHidden') else 'inline'}",
+        f"mix-blend-mode:{sp.blend_mode_to_svg(image_element.get('blendMode', 1))}",
+        f"opacity:{image_element.get('opacity', 1)}",
+    ]
+    style = ";".join(style_parts)
+
+    attributes = {
+        "id": image_element.get("name"),
+        "preserveAspectRatio": "none",
+        "transform": tp.create_group_transform(transform),
+        "style": style,
+        "xlink:href": f"data:image/{str(format).lower()};base64,{image}"
+    }
+
+    return ET.Element("image", attributes)
 
 
 def create_svg_header(artboard):
@@ -207,7 +257,9 @@ def create_svg_header(artboard):
         "viewBox": f"{x} {y} {width} {height}",
         "version": "1.1",
         "id": f"{title}",
-        "xmlns": "http://www.w3.org/2000/svg"
+        "xmlns:xlink": "http://www.w3.org/1999/xlink",
+        "xmlns": "http://www.w3.org/2000/svg",
+        "xmlns:svg": "http://www.w3.org/2000/svg",
     })
 
     return svg_header
@@ -255,3 +307,18 @@ def single_path_geometry_to_svg_path(data):
         svg_path += "Z"
 
     return svg_path
+
+
+def detect_image_format_and_size(base64_image):
+    """Detect the image format and dimension of b64 encoded image."""
+    # Decode Base64 image and convert to binary
+    binary_data = base64.b64decode(base64_image)
+
+    # Load image in Pillow
+    image = Image.open(BytesIO(binary_data))
+
+    # Get image format（JPEG, PNG） and dimension
+    image_format = image.format  # 例: 'PNG'
+    width, height = image.size   # 幅と高さ (ピクセル単位)
+
+    return image_format, width, height
