@@ -1,7 +1,7 @@
 """
 VI extractors
 
-reads Vectornator JSON data from .vectornator or .curve files.
+reads Vectornator / Linearity Curve JSON data from .vectornator or .curve files.
 """
 
 

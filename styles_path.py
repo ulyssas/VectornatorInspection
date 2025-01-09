@@ -18,8 +18,8 @@ def decode_stroke_style(stroke_style):
         "join": 1, # ! 0: miter, 1: round, 2: bevel
         "position": 0 # ! -1: inner, 0: center, 1: outside not possible in SVG 1.1?
 
-        "dashPattern": [ # ??????????????????
-            26, # Dash
+        "dashPattern": [ # ? what is this???
+            26, # Dash (param name in Curve)
             9,  # Dash
             16, # Gap
             5   # Gap
@@ -35,7 +35,7 @@ def decode_stroke_style(stroke_style):
         "stroke-width": str(width),
         "stroke-opacity": color_to_rgb_tuple(color)[3],
         "stroke-linecap": cap_to_svg(basic_style.get("cap",  0)),
-        "stroke-dasharray": None,
+        "stroke-dasharray": None,  # ! ignore for now
         "stroke-linejoin": join_to_svg(basic_style.get("join",  1))
     }
 
@@ -49,6 +49,41 @@ def decode_fill(fill):
             "fill": rgba_to_hex(color_to_rgb_tuple(color)),
             "fill-opacity": color_to_rgb_tuple(color)[3]
         }
+
+
+def blend_mode_to_svg(blendmode):
+    """
+    Returns value for mix-blend-mode attribute.
+
+    Color Burn, Color Dodge, Soft Light, Hard Light do not exist in Linearity Curve.
+    """
+    match blendmode:
+        case 0:
+            return "normal"
+        case 1:
+            return "multiply"
+        case 2:
+            return "screen"
+        case 3:
+            return "overlay"
+        case 4:
+            return "darken"
+        case 5:
+            return "lighten"
+        case 10:
+            return "difference"
+        case 11:
+            return "exclusion"
+        case 12:
+            return "hue"
+        case 13:
+            return "saturation"
+        case 14:
+            return "color"
+        case 15:
+            return "luminosity"
+        case _:
+            return "normal"
 
 
 def cap_to_svg(cap):

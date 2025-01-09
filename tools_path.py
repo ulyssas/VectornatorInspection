@@ -24,7 +24,8 @@ def apply_translation(data, translation):
     tx, ty = translation
     transformed_nodes = []
     for node in data["nodes"]:
-        transformed_node = { "nodeType": node["nodeType"], "cornerRadius": node["cornerRadius"] }
+        transformed_node = {
+            "nodeType": node["nodeType"], "cornerRadius": node["cornerRadius"]}
         for point in ["anchorPoint", "inPoint", "outPoint"]:
             x, y = node[point]
             transformed_node[point] = [x + tx, y + ty]
@@ -41,7 +42,8 @@ def apply_rotation(data, angle, origin=(0, 0)):
     ox, oy = origin
     transformed_nodes = []
     for node in data["nodes"]:
-        transformed_node = { "nodeType": node["nodeType"], "cornerRadius": node["cornerRadius"] }
+        transformed_node = {
+            "nodeType": node["nodeType"], "cornerRadius": node["cornerRadius"]}
         for point in ["anchorPoint", "inPoint", "outPoint"]:
             x, y = node[point]
             x -= ox
@@ -63,7 +65,8 @@ def apply_scale(data, scale, origin=(0, 0)):
     transformed_nodes = []
 
     for node in data["nodes"]:
-        transformed_node = { "nodeType": node["nodeType"], "cornerRadius": node["cornerRadius"] }
+        transformed_node = {
+            "nodeType": node["nodeType"], "cornerRadius": node["cornerRadius"]}
         for point in ["anchorPoint", "inPoint", "outPoint"]:
             x, y = node[point]
             x -= ox
@@ -85,7 +88,8 @@ def apply_shear(data, shear, origin=(0, 0)):
     transformed_nodes = []
 
     for node in data["nodes"]:
-        transformed_node = { "nodeType": node["nodeType"], "cornerRadius": node["cornerRadius"] }
+        transformed_node = {
+            "nodeType": node["nodeType"], "cornerRadius": node["cornerRadius"]}
         for point in ["anchorPoint", "inPoint", "outPoint"]:
             x, y = node[point]
             x -= ox
@@ -137,7 +141,7 @@ def create_group_transform(localTransform):
     Returns:
         str: A transform string with separate transformations (e.g., rotate, translate, skewX, scale).
     """
-    rotation = localTransform.get("rotation", 0) # radian
+    rotation = localTransform.get("rotation", 0)  # radian
     scale = localTransform.get("scale", [1, 1])
     shear = localTransform.get("shear", 0)
     translation = localTransform.get("translation", [0, 0])
@@ -147,7 +151,7 @@ def create_group_transform(localTransform):
     sx, sy = scale
     shear_deg = math.degrees(math.atan(shear))  # Shear is given in radians
     tx, ty = translation
-    #cx, cy = center # bound_center = t.calculate_bbox_center(element.get("pathGeometry")["nodes"])
+    # cx, cy = center # bound_center = t.calculate_bbox_center(element.get("pathGeometry")["nodes"])
 
     # Create transform components
     # The order matters
@@ -168,8 +172,5 @@ def create_group_transform(localTransform):
         # Skew in the X direction
         transform_parts.append(f"skewX({shear_deg:.6f})")
 
-
     # Join components with spaces
     return " ".join(transform_parts)
-
-

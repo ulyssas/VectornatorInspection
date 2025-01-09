@@ -1,13 +1,9 @@
 """
 VI decoders
 
-converts Vectornator JSON data to usable data.
+converts Linearity Curve (5.x) JSON data to usable data.
+
 """
-
-
-import base64
-import json
-import plistlib
 
 
 def read_gid_json(gid_json):
@@ -21,7 +17,7 @@ def read_gid_json(gid_json):
     for layer_id in layer_ids:
         layer = layers[layer_id]
         layers_result.append(
-                traverse_layer(gid_json, layer))
+            traverse_layer(gid_json, layer))
 
     print(layers_result)
 
@@ -44,7 +40,7 @@ def traverse_layer(gid_json, layer):
         element = get_element(gid_json, element_id)
         if element:
             layer_result["elements"].append(
-                    traverse_element(gid_json, element))
+                traverse_element(gid_json, element))
 
     return layer_result
 
@@ -62,7 +58,9 @@ def traverse_element(gid_json, element):
         "localTransform": None,
         "stylable": None,
         "abstractPath": None,
-        "strokeStyle": None, # what is fillRule/strokeType?
+        "abstractText": None,
+        "singleStyle": None,
+        "strokeStyle": None,  # what is fillRule/strokeType?
         "fill": None,
         "pathGeometry": [],
         "groupElements": []  # store group elements
@@ -71,7 +69,8 @@ def traverse_element(gid_json, element):
     # localTransform
     local_transform_id = element.get("localTransformId")
     if local_transform_id is not None:
-        element_result["localTransform"] = get_local_transform(gid_json, local_transform_id)
+        element_result["localTransform"] = get_local_transform(
+            gid_json, local_transform_id)
 
     # Stylable
     stylable_id = element.get("subElement", {}).get("stylable", {}).get("_0")
@@ -80,7 +79,8 @@ def traverse_element(gid_json, element):
         element_result["stylable"] = stylable
 
         # Abstract Path
-        abstract_path_id = stylable.get("subElement", {}).get("abstractPath", {}).get("_0")
+        abstract_path_id = stylable.get("subElement", {}).get(
+            "abstractPath", {}).get("_0")
         if abstract_path_id is not None:
             abstract_path = get_abstract_path(gid_json, abstract_path_id)
             element_result["abstractPath"] = abstract_path
@@ -98,7 +98,8 @@ def traverse_element(gid_json, element):
                 element_result["fill"] = fill
 
             # Path
-            path_id = abstract_path.get("subElement", {}).get("path", {}).get("_0")
+            path_id = abstract_path.get(
+                "subElement", {}).get("path", {}).get("_0")
             if path_id is not None:
                 path = get_path(gid_json, path_id)
 
@@ -109,7 +110,8 @@ def traverse_element(gid_json, element):
                     element_result["pathGeometry"].append(path_geometry)
 
             # compoundPath
-            compound_path_id = abstract_path.get("subElement", {}).get("compoundPath", {}).get("_0")
+            compound_path_id = abstract_path.get(
+                "subElement", {}).get("compoundPath", {}).get("_0")
             if compound_path_id is not None:
                 compound_path = get_compound_path(gid_json, compound_path_id)
 
@@ -119,6 +121,20 @@ def traverse_element(gid_json, element):
                     for id in subpath_ids:
                         path_geometry = get_path_geometries(gid_json, id)
                         element_result["pathGeometry"].append(path_geometry)
+
+        # Abstract Text
+        abstract_text_id = element.get("subElement", {}).get(
+            "abstractText", {}).get("_0")
+        if abstract_text_id is not None:
+            abstract_text = get_abstract_text(gid_json, abstract_text_id)
+            element_result["abstractText"] = abstract_text
+
+        # singleStyle
+        single_style_id = element.get("subElement", {}).get(
+            "singleStyle", {}).get("_0")
+        if single_style_id is not None:
+            single_style = get_single_style(gid_json, single_style_id)
+            element_result["singleStyle"] = single_style
 
     # Group
     group_id = element.get("subElement", {}).get("group", {}).get("_0")
@@ -136,10 +152,14 @@ def traverse_element(gid_json, element):
     return element_result
 
 
-def decode_b64_plist(encoded_string):
-    """Decodes Vectornator Text data (Binary plist encoded in base64)."""
-    decoded_bplist = plistlib.loads(base64.b64decode(encoded_string))
-    return decoded_bplist
+def vectornator_to_artboard(gid_json):
+    """Reads Vectornator gid.json and returns Curve artboard."""
+    return {
+        "title": gid_json.get("title", "Untitled"),
+        "activeLayerIndex": gid_json.get("activeLayerIndex", 0),
+        "frame": gid_json.get("frame", {}),
+        "gid": gid_json.get("gid", "")
+    }
 
 
 def get_element(gid_json, index):
@@ -170,6 +190,18 @@ def get_abstract_path(gid_json, index):
     """Get abstractPath from gid_json."""
     abstract_paths = gid_json.get("abstractPaths", [])
     return abstract_paths[index]
+
+
+def get_abstract_text(gid_json, index):
+    """Get abstractText from gid_json."""
+    abstract_texts = gid_json.get("abstractTexts", [])
+    return abstract_texts[index]
+
+
+def get_single_style(gid_json, index):
+    """Get singleStyle from gid_json."""
+    single_styles = gid_json.get("singleStyles", [])
+    return single_styles[index]
 
 
 def get_stroke_style(gid_json, index):

@@ -11,7 +11,7 @@ Vectornator Inspection aims to convert .vectornator / .curve files into SVG.
 * group inside group and Bitmap(png) embedding.
 * Blend Mode.
 * Automatically uses `Pixels` as units. Curve supports other units as well, which will be added later.
-* text, Curve has weired text format (base64-encoded binary plist). I made the decoder, but I haven't done anything else.
+* text, Curve has weird text format (base64-encoded binary plist). I made the decoder, but I haven't done anything else.
 * Other stuffs(line styles, multiple artboards, masks) I'm not sure how to implement them.
 
 Any amount of contribution is welcome!

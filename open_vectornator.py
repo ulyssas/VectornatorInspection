@@ -1,11 +1,11 @@
 """
 Vectornator Inspection (2024/12/7)
 
-description: Linearity Curve file reader(5.18.0) with tons of ChatGPT code
+description: Linearity Curve file reader(5.18.x) with tons of AI code
 
 usage: python open_vectornator.py file.curve
 
-what works (2024/12/28): pathGeometry -> SVG path, very primitive svg export
+what works (2025/01/09): limited SVG export (no text, bitmap, other units)
 """
 
 import argparse
@@ -26,7 +26,13 @@ parser.add_argument('input_file', help='Linearity Curve file')
 
 
 def open_vectornator(file):
-    """Open and process a Vectornator file."""
+    """
+    Open and process a Linearity Curve (.curve) file.
+
+    Vectornator (.vectornator) file is not supported yet.
+
+    You can upgrade file format by opening vectornator file in Linearity Curve, then export as .curve.
+    """
     try:
         with zipfile.ZipFile(file, 'r') as archive:
             # Step 1: Read Manifest
@@ -43,22 +49,30 @@ def open_vectornator(file):
             version = document.get("appVersion", "unknown app version")
             artboard_paths = drawing_data.get("artboardPaths", [])
 
-            print(f"Unit: {units}")  # * will be used later
-            # * file format is different between 4.x and 5.x (e.g. 4.13.7 vs 5.18.0)
-            check_version(version)
+            print(f"Unit: {units}")  # will be used later (as Inkscape attribute)
 
             if not artboard_paths:
                 logging.warning("No artboard paths found in the document.")
                 return
 
-            # Step 5: Read the first Artboard (GUID JSON)
-            # * Only the first one for now
+            # Step 5: Read Artboard (GUID JSON)
+            # If there's multiple artboards, only the first will be exported.
             gid_json = ext.extract_gid_json(archive, artboard_paths[0])
 
-            # I don't know what other artboards are
-            artboard = gid_json.get("artboards")[0]
+            # if the file is Linearity Curve
+            if check_if_curve(version):
+                print(f"Supported version: {version}.")
+                artboard = gid_json.get("artboards")[0]
+                layers = d.read_gid_json(gid_json)
 
-            layers = d.read_gid_json(gid_json)
+            # if the file is Vectornator
+            else:
+                # Does not work yet
+                #artboard = d.vectornator_to_artboard(gid_json)
+                #layers = gid_json.get("layers", [])
+                raise ValueError(
+                    f"Unsupported version: {version}. Version 5.0.0 or up is required.")
+
             # print(json.dumps(gid_json, indent=4))
 
             exp.create_svg(artboard, layers, file)
@@ -68,22 +82,22 @@ def open_vectornator(file):
     except KeyError as e:
         logging.error(f"Required file missing in the archive: {e}")
     except ValueError as e:
-        logging.error(f"An error occurred while reading file. {traceback.format_exc()}")
+        logging.error(
+            f"An error occurred while reading file. {traceback.format_exc()}")
     except Exception as e:
         logging.error(
             f"An unexpected error occurred: {traceback.format_exc()}")
 
 
-def check_version(input_version: str):
-    """check if the file version is 5.x"""
-    required_version = version.parse("5.0.0")  # Linearity Curve 5.x
+def check_if_curve(input_version: str):
+    """check if the file version is 5.x or not"""
+    required_version = version.parse("5.0.0")
     current_version = version.parse(input_version)
 
     if current_version < required_version:
-        raise ValueError(
-            f"Unsupported version: {input_version}. Version 5.0.0 or up is required.")
+        return False
     else:
-        print(f"Supported version: {input_version}.")
+        return True
 
 
 if __name__ == "__main__":

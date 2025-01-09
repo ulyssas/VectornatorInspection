@@ -2,8 +2,6 @@
 VI exporters
 
 outputs svg file.
-
-! Major work has to be done in this and tools.py
 """
 
 
@@ -11,15 +9,12 @@ import os
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
-import tools_path as tp
 import styles_path as sp
+import tools_path as tp
 
 
 def create_svg(artboard, layers, file):
-    """Exports svg file. Under construction."""
-
-    # TODO if there's something inside groupElements, VI has to ignore stylables~pathGeometry
-    # ! cannot handle groups inside groups, or compoundPath(What?)
+    """Exports svg file. (WIP)"""
 
     # SVG header
     svg = create_svg_header(artboard)
@@ -56,7 +51,7 @@ def create_svg_layer(layer):
     Converts a layer defined in VI Decoders.traverse_layer() to an SVG group.
     """
 
-    # Inkscape only support style tag (Opacity/Visibility DIDNOT work)
+    # Inkscape only supports style tag (Opacity/Visibility DID NOT work)
     style_parts = [
         f"display:{'inline' if layer.get('isVisible') else 'none'}",
         f"opacity:{layer.get('opacity')}"
@@ -67,36 +62,60 @@ def create_svg_layer(layer):
         "id": layer.get("name"),
         "style": style_layer,
     })
-    elements = layer.get("elements")
+    elements = layer.get("elements", [])
     for element in elements:
         # if the element is a group
         if element.get("groupElements", []):
-            root_transform = element.get("localTransform")
-            style_parts = [
-                f"display:{'none' if element.get('isHidden') else 'inline'}",
-                f"opacity:{element.get('opacity')}"
-            ]
-            style_group = ";".join(style_parts)
-
-            svg_group = ET.Element("g", {
-                "id": element.get("name"),
-                "style": style_group,
-                "transform": tp.create_group_transform(root_transform)
-            })
-            group_elements = element.get("groupElements")
-            #print(f"ELEMENTS {group_elements}")
-            for group_element in group_elements:
-                svg_group_element = create_svg_element(group_element)
-                svg_group.append(svg_group_element)
-
+            # Process groups recursively
+            svg_group = create_svg_group(element)
             svg_layer.append(svg_group)
 
         # if it is not a group
         else:
+            # Process individual elements
             svg_element = create_svg_element(element)
             svg_layer.append(svg_element)
 
     return svg_layer
+
+
+def create_svg_group(group_element):
+    """
+    Recursively creates an SVG group element and its child elements.
+
+    Args:
+        group_element (dict): A dictionary representing a group element.
+
+    Returns:
+        ET.Element: An SVG group element with nested child elements.
+    """
+    root_transform = group_element.get("localTransform", {})
+    style_parts = [
+        f"display:{'none' if group_element.get('isHidden') else 'inline'}",
+        f"opacity:{group_element.get('opacity', 1)}",
+        f"mix-blend-mode:{sp.blend_mode_to_svg(group_element.get('blendMode', 1))}"
+    ]
+    style_group = ";".join(style_parts)
+
+    svg_group = ET.Element("g", {
+        "id": group_element.get("name"),
+        "style": style_group,
+        "transform": tp.create_group_transform(root_transform)
+    })
+
+    # Recursively process group elements
+    group_elements = group_element.get("groupElements", [])
+    for child in group_elements:
+        if child.get("groupElements", []):
+            # Recursively process nested groups
+            nested_group = create_svg_group(child)
+            svg_group.append(nested_group)
+        else:
+            # Process individual elements
+            svg_group_element = create_svg_element(child)
+            svg_group.append(svg_group_element)
+
+    return svg_group
 
 
 def create_svg_element(element):
@@ -134,9 +153,10 @@ def create_svg_element(element):
     # Create style attribute
     style_parts = [
         f"display:{'none' if element.get('isHidden') else 'inline'}",
+        f"mix-blend-mode:{sp.blend_mode_to_svg(element.get('blendMode', 1))}",
         f"fill:{fill or 'none'}",
         f"fill-opacity:{fill_opacity}",
-        f"fill-rule:{'evenodd'}", # ?
+        f"fill-rule:{'nonzero'}",  # ? nonzero or evenodd ?
         f"stroke:{stroke}",
         f"stroke-width:{stroke_width}",
         f"stroke-opacity:{stroke_opacity}",
@@ -150,11 +170,11 @@ def create_svg_element(element):
 
     for path in geometries:
         print(path)
-        transformed.append(tp.apply_transform(path, element.get("localTransform")))
+        transformed.append(tp.apply_transform(
+            path, element.get("localTransform")))
 
     attributes = {
         "id": element.get("name"),
-        #"style": "fill:#565656;fill-opacity:0.000000;stroke:#000000;stroke-width:10;stroke-opacity:1;stroke-linecap:butt;stroke-linejoin:round",
         "style": style,
         "d": path_geometry_to_svg_path(transformed)
     }
