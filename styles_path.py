@@ -6,8 +6,7 @@ Converts non-text styles into svg styles.
 
 
 import colorsys
-import logging
-import traceback
+import xml.etree.ElementTree as ET
 
 
 def decode_stroke_style(stroke_style):
@@ -20,11 +19,11 @@ def decode_stroke_style(stroke_style):
         "join": 1, # ! 0: miter, 1: round, 2: bevel
         "position": 0 # ! -1: inner, 0: center, 1: outside not possible in SVG 1.1?
 
-        "dashPattern": [ # ? what is this???
-            26, # Dash (param name in Curve)
-            9,  # Dash
-            16, # Gap
-            5   # Gap
+        "dashPattern": [
+            26,
+            9,
+            16,
+            5
         ],
     },
     """
@@ -37,7 +36,7 @@ def decode_stroke_style(stroke_style):
         "stroke-width": str(width),
         "stroke-opacity": color_to_rgb_tuple(color)[3],
         "stroke-linecap": cap_to_svg(basic_style.get("cap",  0)),
-        "stroke-dasharray": None,  # ! ignore for now
+        "stroke-dasharray": dash_pattern_to_svg(basic_style.get("dashPattern")),
         "stroke-linejoin": join_to_svg(basic_style.get("join",  1))
     }
 
@@ -49,13 +48,61 @@ def decode_fill(fill):
     gradient = fill.get("gradient", {}).get("_0")
 
     if gradient is not None:
-        raise NotImplementedError(
-            f"Gradient fill is not supported.")
+        return gradient # pass through
     elif color is not None:
         return {
             "fill": rgba_to_hex(color_to_rgb_tuple(color)),
             "fill-opacity": color_to_rgb_tuple(color)[3]
         }
+
+
+def create_gradient_element(gradient_data, id):
+    """Create an SVG gradient element from data."""
+    print(gradient_data)
+    gradient = gradient_data.get("gradient", {})
+    transform = gradient_data.get("transform", {})
+    gradient_type = gradient.get("typeRawValue", 0) # 0: Linear, 1: Radial
+
+    # Create a linearGradient element
+    gradient_element = ET.Element(str(gradient_type_to_svg(gradient_type)), {
+        "id": f"gradient{id}",
+        "xlink:href": f"#gradient{id}",
+        "gradientUnits": "userSpaceOnUse",
+        #"gradientTransform": f"matrix({transform['end'][0]}, {transform['end'][1]}, {transform['secondaryEnd'][0]}, {transform['secondaryEnd'][1]}, {transform['start'][0]}, {transform['start'][1]})"
+    })
+
+    # Add color stops
+    for stop in gradient["stops"]:
+        color = color_to_rgb_tuple(stop.get("color"))
+        ratio = stop.get("ratio")
+
+        # Create style attribute
+        style_parts = [
+            f"stop-color:{rgba_to_hex(color)}",
+            f"stop-opacity:{color[3]}",
+        ]
+        style = ";".join(style_parts)
+
+        stop_element = ET.Element("stop", {
+            "style": style,
+            "offset": f"{ratio}",
+        })
+        gradient_element.append(stop_element)
+
+    return gradient_element
+
+
+def gradient_type_to_svg(blendmode):
+    """
+    Returns gradient type (Linear / Radial).
+    """
+    match blendmode:
+        case 0:
+            return "linearGradient"
+        case 1:
+            return "radialGradient"
+        case _:
+            return "linearGradient"
 
 
 def blend_mode_to_svg(blendmode):
@@ -104,6 +151,21 @@ def cap_to_svg(cap):
             return "square"
         case _:
             return "butt"
+
+
+def dash_pattern_to_svg(dash_pattern):
+    """
+    Converts a dash pattern list to an SVG-compatible stroke-dasharray string.
+
+    Args:
+        dash_pattern (list): List of dash and gap lengths.
+
+    Returns:
+        str: A comma-separated string for SVG stroke-dasharray.
+    """
+    if not dash_pattern:
+        return None  # No dash pattern
+    return ", ".join(map(str, dash_pattern))
 
 
 def join_to_svg(join):

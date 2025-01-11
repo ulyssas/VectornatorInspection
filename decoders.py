@@ -75,6 +75,7 @@ def traverse_element(archive, gid_json, element):
         "singleStyle": None,
         "strokeStyle": None,  # what is fillRule/strokeType?
         "fill": None,
+        "fillId": None,
         "pathGeometry": [],
         "groupElements": []  # store group elements
     }
@@ -117,6 +118,7 @@ def traverse_element(archive, gid_json, element):
             fill_id = abstract_path.get("fillId")
             if fill_id is not None:
                 element_result["fill"] = get_fill(gid_json, fill_id)
+                element_result["fillId"] = fill_id
 
             # Path
             path_id = abstract_path.get(

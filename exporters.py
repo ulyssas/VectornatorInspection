@@ -23,13 +23,19 @@ def create_svg(artboard, layers, file):
     # SVG header
     svg = create_svg_header(artboard)
 
+    # Add <defs> element
+    defs = ET.Element("defs", {
+        "id": "defs1",
+    })
+    svg.append(defs)
+
     # comment
     comment = ET.Comment("Generated with Vectornator Inspection")
     svg.append(comment)
 
     # layer as g
     for layer in layers:
-        svg_layer = create_svg_layer(layer)
+        svg_layer = create_svg_layer(layer, defs)
         svg.append(svg_layer)
 
     ET.dump(svg)
@@ -45,16 +51,20 @@ def create_svg(artboard, layers, file):
     reparsed = minidom.parseString(rough_string)
     pretty_svg = reparsed.toprettyxml(indent="\t")
 
+    # Custom declaration
+    xml_declaration = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n'
+    modified_svg = xml_declaration + '\n'.join(pretty_svg.splitlines()[1:])
+
     # output prettified svg
     with open(output, "w", encoding="utf-8") as output_file:
-        output_file.write(pretty_svg)
+        output_file.write(modified_svg)
 
-    ## construct the tree and save svg file (unformatted svg)
-    #tree = ET.ElementTree(svg)
-    #tree.write(output, encoding="UTF-8", xml_declaration=True)
+    # construct the tree and save svg file (unformatted svg)
+    # tree = ET.ElementTree(svg)
+    # tree.write(output, encoding="UTF-8", xml_declaration=True)
 
 
-def create_svg_layer(layer):
+def create_svg_layer(layer, defs):
     """
     Converts a layer defined in VI Decoders.traverse_layer() to an SVG group.
     """
@@ -75,7 +85,7 @@ def create_svg_layer(layer):
         # if the element is a group
         if element.get("groupElements", []):
             # Process groups recursively
-            svg_group = create_svg_group(element)
+            svg_group = create_svg_group(element, defs)
             svg_layer.append(svg_group)
 
         # if it is not a group
@@ -83,18 +93,21 @@ def create_svg_layer(layer):
             # Process individual elements
             print(f"ELEMENT: {element}")
             print(f"ELEMENTNAME: {element.get('name')}")
-            svg_element = create_svg_element(element)
+            svg_element, gradient = create_svg_element(element)
             svg_layer.append(svg_element)
+            if gradient is not None: # went through svg_path and got gradient
+                defs.append(gradient)  # add gradient to defs
 
     return svg_layer
 
 
-def create_svg_group(group_element):
+def create_svg_group(group_element, defs):
     """
     Recursively creates an SVG group element and its child elements.
 
     Args:
         group_element (dict): A dictionary representing a group element.
+        defs: An svg defs to define gradients.
 
     Returns:
         ET.Element: An SVG group element with nested child elements.
@@ -118,11 +131,14 @@ def create_svg_group(group_element):
     for child in group_elements:
         if child.get("groupElements", []):
             # Recursively process nested groups
-            nested_group = create_svg_group(child)
+            nested_group = create_svg_group(child, defs)
             svg_group.append(nested_group)
         else:
             # Process individual elements
-            svg_group_element = create_svg_element(child)
+            svg_group_element, gradient = create_svg_element(child)
+            if gradient is not None: # went through svg_path and got gradient
+                defs.append(gradient)  # add gradient to defs
+
             svg_group.append(svg_group_element)
 
     return svg_group
@@ -147,6 +163,7 @@ def create_svg_path(path_element):
 
     stroke_style = path_element.get("strokeStyle", None)
     fill_style = path_element.get("fill")
+    fill_id = path_element.get("fillId")
 
     # Decode stroke style only if it exists
     if stroke_style:
@@ -155,20 +172,33 @@ def create_svg_path(path_element):
         stroke_width = decoded_stroke_style.get("stroke-width")
         stroke_opacity = decoded_stroke_style.get("stroke-opacity")
         stroke_linecap = decoded_stroke_style.get("stroke-linecap")
+        stroke_dasharray = decoded_stroke_style.get("stroke-dasharray")
         stroke_linejoin = decoded_stroke_style.get("stroke-linejoin")
     else:
         stroke = "none"
         stroke_width = "0"
         stroke_opacity = "1"
         stroke_linecap = "butt"
+        stroke_dasharray = ""
         stroke_linejoin = "miter"
 
     # Decode fill only if it exists
     if fill_style:
         decoded_fill = sp.decode_fill(fill_style)
-        fill = decoded_fill.get("fill")
-        fill_opacity = decoded_fill.get("fill-opacity")
+        gradient = decoded_fill.get("gradient")
+        if gradient:
+            svg_gradient_element = sp.create_gradient_element(decoded_fill, fill_id)
+            gradient_name = f"gradient{fill_id}"
+            gradient_url = f"url(#{gradient_name})"
+            fill_opacity = "1"
+        else:
+            svg_gradient_element = None
+            gradient_url = None
+            fill = decoded_fill.get("fill")
+            fill_opacity = decoded_fill.get("fill-opacity")
     else:
+        svg_gradient_element = None
+        gradient_url = None
         fill = "none"
         fill_opacity = "1"
 
@@ -177,13 +207,14 @@ def create_svg_path(path_element):
         f"display:{'none' if path_element.get('isHidden') else 'inline'}",
         f"mix-blend-mode:{sp.blend_mode_to_svg(path_element.get('blendMode', 1))}",
         f"opacity:{path_element.get('opacity', 1)}",
-        f"fill:{fill or 'none'}",
+        f"fill:{gradient_url or fill or 'none'}",
         f"fill-opacity:{fill_opacity}",
         f"fill-rule:{'nonzero'}",  # ? nonzero or evenodd ?
         f"stroke:{stroke}",
         f"stroke-width:{stroke_width}",
         f"stroke-opacity:{stroke_opacity}",
         f"stroke-linecap:{stroke_linecap}",
+        f"stroke-dasharray:{stroke_dasharray}",
         f"stroke-linejoin:{stroke_linejoin}"
     ]
     style = ";".join(style_parts)
@@ -202,7 +233,7 @@ def create_svg_path(path_element):
         "d": path_geometry_to_svg_path(transformed)
     }
 
-    return ET.Element("path", attributes)
+    return ET.Element("path", attributes), svg_gradient_element # add gradient to defs if exists
 
 
 def create_svg_image(image_element):
@@ -229,7 +260,7 @@ def create_svg_image(image_element):
         "xlink:href": f"data:image/{str(format).lower()};base64,{image}"
     }
 
-    return ET.Element("image", attributes)
+    return ET.Element("image", attributes), None # no gradient unlike create_svg_path
 
 
 def create_svg_header(artboard):
