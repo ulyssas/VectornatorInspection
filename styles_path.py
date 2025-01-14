@@ -8,6 +8,8 @@ Converts non-text styles into svg styles.
 import colorsys
 import xml.etree.ElementTree as ET
 
+import tools_path as tp
+
 
 def decode_stroke_style(stroke_style):
     """
@@ -48,7 +50,7 @@ def decode_fill(fill):
     gradient = fill.get("gradient", {}).get("_0")
 
     if gradient is not None:
-        return gradient # pass through
+        return gradient  # pass through
     elif color is not None:
         return {
             "fill": rgba_to_hex(color_to_rgb_tuple(color)),
@@ -56,27 +58,45 @@ def decode_fill(fill):
         }
 
 
-def create_gradient_element(gradient_data, id):
+def create_gradient_element(gradient_data, local_transform, id):
     """Create an SVG gradient element from data."""
-    print(gradient_data)
     gradient = gradient_data.get("gradient", {})
+    gradient_type = gradient.get("typeRawValue", 0)  # 0: Linear, 1: Radial
     transform = gradient_data.get("transform", {})
-    gradient_type = gradient.get("typeRawValue", 0) # 0: Linear, 1: Radial
 
-    # Create a linearGradient element
+    # Element and common attributes
     gradient_element = ET.Element(str(gradient_type_to_svg(gradient_type)), {
         "id": f"gradient{id}",
         "xlink:href": f"#gradient{id}",
         "gradientUnits": "userSpaceOnUse",
-        #"gradientTransform": f"matrix({transform['end'][0]}, {transform['end'][1]}, {transform['secondaryEnd'][0]}, {transform['secondaryEnd'][1]}, {transform['start'][0]}, {transform['start'][1]})"
+        "gradientTransform": tp.create_group_transform(local_transform),
     })
+
+    if gradient_type == 0:  # Linear Gradient
+        gradient_element.attrib["x1"] = str(transform['start'][0])
+        gradient_element.attrib["y1"] = str(transform['start'][1])
+        gradient_element.attrib["x2"] = str(transform['end'][0])
+        gradient_element.attrib["y2"] = str(transform['end'][1])
+
+    elif gradient_type == 1:  # Radial Gradient
+        cx = transform['start'][0]
+        cy = transform['start'][1]
+        fx = transform['end'][0]
+        fy = transform['end'][1]
+
+        # Calculate radius (r) from start and end points.
+        r = ((fx - cx)**2 + (fy - cy)**2)**0.5
+
+        gradient_element.attrib["cx"] = str(cx)
+        gradient_element.attrib["cy"] = str(cy)
+        gradient_element.attrib["r"] = str(r)
 
     # Add color stops
     for stop in gradient["stops"]:
         color = color_to_rgb_tuple(stop.get("color"))
         ratio = stop.get("ratio")
 
-        # Create style attribute
+		# Create style attribute
         style_parts = [
             f"stop-color:{rgba_to_hex(color)}",
             f"stop-opacity:{color[3]}",

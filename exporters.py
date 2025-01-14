@@ -95,7 +95,7 @@ def create_svg_layer(layer, defs):
             print(f"ELEMENTNAME: {element.get('name')}")
             svg_element, gradient = create_svg_element(element)
             svg_layer.append(svg_element)
-            if gradient is not None: # went through svg_path and got gradient
+            if gradient is not None:  # went through svg_path and got gradient
                 defs.append(gradient)  # add gradient to defs
 
     return svg_layer
@@ -136,7 +136,7 @@ def create_svg_group(group_element, defs):
         else:
             # Process individual elements
             svg_group_element, gradient = create_svg_element(child)
-            if gradient is not None: # went through svg_path and got gradient
+            if gradient is not None:  # went through svg_path and got gradient
                 defs.append(gradient)  # add gradient to defs
 
             svg_group.append(svg_group_element)
@@ -187,7 +187,8 @@ def create_svg_path(path_element):
         decoded_fill = sp.decode_fill(fill_style)
         gradient = decoded_fill.get("gradient")
         if gradient:
-            svg_gradient_element = sp.create_gradient_element(decoded_fill, fill_id)
+            svg_gradient_element = sp.create_gradient_element(
+                decoded_fill, path_element.get("localTransform"), fill_id)
             gradient_name = f"gradient{fill_id}"
             gradient_url = f"url(#{gradient_name})"
             fill_opacity = "1"
@@ -233,7 +234,8 @@ def create_svg_path(path_element):
         "d": path_geometry_to_svg_path(transformed)
     }
 
-    return ET.Element("path", attributes), svg_gradient_element # add gradient to defs if exists
+    # add gradient to defs if exists
+    return ET.Element("path", attributes), svg_gradient_element
 
 
 def create_svg_image(image_element):
@@ -260,7 +262,8 @@ def create_svg_image(image_element):
         "xlink:href": f"data:image/{str(format).lower()};base64,{image}"
     }
 
-    return ET.Element("image", attributes), None # no gradient unlike create_svg_path
+    # no gradient unlike create_svg_path
+    return ET.Element("image", attributes), None
 
 
 def create_svg_header(artboard):
@@ -285,7 +288,7 @@ def create_svg_header(artboard):
     svg_header = ET.Element("svg", {
         "width": str(width),
         "height": str(height),
-        "viewBox": f"{x} {y} {width} {height}",
+        "viewBox": f"0 0 {width} {height}",
         "version": "1.1",
         "id": f"{title}",
         "xmlns:xlink": "http://www.w3.org/1999/xlink",

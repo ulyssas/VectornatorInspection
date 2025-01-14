@@ -8,11 +8,11 @@ Vectornator Inspection aims to convert .vectornator / .curve files into SVG.
 ## TODO
 * Complete Linearity Curve 5.x format(yes, Vectornator 4.x and Curve 5.x files are technically different format!)
 * Vectornator 4.x file format support will be added later.
-* Gradient fill.
+* Gaussian Blur.
+* Text support. Curve has weird text format (base64-encoded binary plist). I made the decoder, but I haven't done anything else.
 * Corner radius and shapes.
 * Support for other units than `Pixels`. Curve supports other units as well, which will be added later.
-* Text support. Curve has weird text format (base64-encoded binary plist). I made the decoder, but I haven't done anything else.
-* Other stuffs(line styles, multiple artboards, masks, blur). I'm not sure how to implement them.
+* Other stuffs(brush-type stroke, multiple artboards, masks). I'm not sure how to implement them.
 
 Any amount of contribution is welcome!
 
@@ -25,6 +25,6 @@ This means Curve documents cannot be exported without sacrificing quality.
 
 All of my works on Curve can no longer be exported with layer structures intact. It is such a bummer.
 
-So in this project, I want to make a converter for Vectornator files, so that all of my projects are safe.
+So in this project, I want to make a converter for Vectornator / Curve files, so that all of my projects are safe.
 
 And once this is working, I might make an Inkscape extension that can import such files.
