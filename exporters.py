@@ -244,7 +244,7 @@ def create_svg_image(image_element):
     """
     image = image_element.get("imageData", "")  # b64 data
     transform = image_element.get("localTransform")
-    format, width, height = detect_image_format_and_size(image)
+    img_format, _, _ = detect_image_format_and_size(image)
 
     # Create style attribute
     style_parts = [
@@ -259,7 +259,7 @@ def create_svg_image(image_element):
         "preserveAspectRatio": "none",
         "transform": tp.create_group_transform(transform),
         "style": style,
-        "xlink:href": f"data:image/{str(format).lower()};base64,{image}"
+        "xlink:href": f"data:image/{str(img_format).lower()};base64,{image}"
     }
 
     # no gradient unlike create_svg_path
@@ -280,8 +280,6 @@ def create_svg_header(artboard):
     frame = artboard["frame"]
     width = frame["width"]
     height = frame["height"]
-    x = frame["x"]
-    y = frame["y"]
     title = artboard.get("title", "Untitled")
 
     # Create the SVG element

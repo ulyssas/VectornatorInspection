@@ -28,6 +28,28 @@ app version 5.1.1
 ],
 ```
 
+```json
+"singleStyles": [
+    {
+        "fillId": 0,
+        "subElement": 0
+    },
+]
+
+"abstractPaths": [
+    {
+        "subElement": {
+            "path": {
+                "_0": 0
+            }
+        },
+        "fillRule": 0,
+        "strokeType": 0
+    },
+]
+```
+
+
 app version 5.18.4
 
 `"fileFormatVersion"`:44
@@ -41,4 +63,19 @@ app version 5.18.4
         }
     }
 ],
+```
+
+```json
+"abstractPaths": [
+    {
+        "fillId": 0,
+        "fillRule": 0,
+        "strokeType": 0,
+        "subElement": {
+            "path": {
+                "_0": 0
+            }
+        }
+    },
+]
 ```

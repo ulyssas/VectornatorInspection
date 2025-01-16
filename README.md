@@ -7,10 +7,10 @@ Vectornator Inspection aims to convert .vectornator / .curve files into SVG.
 
 ## TODO
 * Complete Linearity Curve 5.x format(yes, Vectornator 4.x and Curve 5.x files are technically different format!)
-* Vectornator 4.x file format support will be added later.
+* My plan is to add support for fileFormatVersion 44(5.18.0~5.18.4) first, then add Vectornator 4.x file format support, and later, earlier Linearity Curve(5.1.2).
 * Gaussian Blur.
 * Text support. Curve has weird text format (base64-encoded binary plist). I made the decoder, but I haven't done anything else.
-* Corner radius and shapes.
+* Corner radius, shapes and line start/end style.
 * Support for other units than `Pixels`. Curve supports other units as well, which will be added later.
 * Other stuffs(brush-type stroke, multiple artboards, masks). I'm not sure how to implement them.
 

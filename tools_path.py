@@ -131,7 +131,7 @@ def calculate_origin(nodes, translation):
     return ox+tx, oy+ty
 
 
-def create_group_transform(localTransform):
+def create_group_transform(local_transform):
     """
     Creates a transform string for the `g` element in SVG format.
 
@@ -141,17 +141,16 @@ def create_group_transform(localTransform):
     Returns:
         str: A transform string with separate transformations (e.g., rotate, translate, skewX, scale).
     """
-    rotation = localTransform.get("rotation", 0)  # radian
-    scale = localTransform.get("scale", [1, 1])
-    shear = localTransform.get("shear", 0)
-    translation = localTransform.get("translation", [0, 0])
+    rotation = local_transform.get("rotation", 0)  # radian
+    scale = local_transform.get("scale", [1, 1])
+    shear = local_transform.get("shear", 0)
+    translation = local_transform.get("translation", [0, 0])
 
     # Extract values
     rotation_deg = math.degrees(rotation)
     sx, sy = scale
     shear_deg = math.degrees(math.atan(shear))  # Shear is given in radians
     tx, ty = translation
-    # cx, cy = center # bound_center = t.calculate_bbox_center(element.get("pathGeometry")["nodes"])
 
     # Create transform components
     # The order matters

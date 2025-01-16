@@ -125,6 +125,9 @@ def gradient_type_to_svg(blendmode):
             return "linearGradient"
 
 
+# ! When creating blur effect function, gradient should be the reference
+
+
 def blend_mode_to_svg(blendmode):
     """
     Returns value for mix-blend-mode attribute.
@@ -264,7 +267,7 @@ def rgba_to_tuple(rgba):
 
 def rgba_to_hex(rgba):
     """Converts RGBA tuple into str hex(#RRGGBB)."""
-    r, g, b, a = rgba
+    r, g, b, _ = rgba
     r = int(r * 255)
     g = int(g * 255)
     b = int(b * 255)

@@ -7,11 +7,12 @@ Only tested for fileFormatVersion 44.
 
 You can upgrade file format by opening vectornator file in Linearity Curve, then export as .curve.
 
-Curve 5.18.0 ~ 5.18.4 uses fileFormatVersion 44, while Curve 5.1.1 and 5.1.2 uses 21.
+Curve 5.18.0 ~ 5.18.4 use fileFormatVersion 44, while Curve 5.1.1 and 5.1.2 use 21.
 """
 
 
 import extractors as ext
+import tools_text as tt
 
 
 def read_gid_json(archive, gid_json):
@@ -31,7 +32,7 @@ def read_gid_json(archive, gid_json):
         layers_result.append(
             traverse_layer(archive, gid_json, layer))
 
-    #print(layers_result)
+    # print(layers_result)
 
     return layers_result
 
@@ -63,20 +64,18 @@ def traverse_element(archive, gid_json, element):
     # easier-to-process data structure
     element_result = {
         "name": element.get("name", "Unnamed Element"),
-        "blendMode": element.get("blendMode", 0),
         "isHidden": element.get("isHidden", False),
         # isLocked requires sodipodi:insensitive
         "opacity": element.get("opacity", 1),
+        "blendMode": element.get("blendMode", 0),
+        "blur": element.get("blur", 0),
         "localTransform": None,
         "imageData": None,  # will be base64 string
-        "stylable": None,
-        "abstractPath": None,
-        "abstractText": None,
         "singleStyle": None,
         "strokeStyle": None,  # what is fillRule/strokeType?
         "fill": None,
         "fillId": None,
-        "pathGeometry": [],
+        "pathGeometry": [],  # array because compoundPath
         "groupElements": []  # store group elements
     }
 
@@ -91,22 +90,22 @@ def traverse_element(archive, gid_json, element):
     if image_id is not None:
         # relativePath contains *.dat (bitmap data)
         # sharedFileImage doesn't exist in 5.1.1 (file version 21) document
-        image = get_image(gid_json, image_id).get("imageData", {}).get("sharedFileImage", {}).get("_0")
+        image = get_image(gid_json, image_id).get(
+            "imageData", {}).get("sharedFileImage", {}).get("_0")
         image_data = get_image_data(gid_json, image).get("relativePath", "")
-        element_result["imageData"] = ext.read_dat_from_zip(archive, image_data)
+        element_result["imageData"] = ext.read_dat_from_zip(
+            archive, image_data)
 
     # Stylable
     stylable_id = element.get("subElement", {}).get("stylable", {}).get("_0")
     if stylable_id is not None:
         stylable = get_stylable(gid_json, stylable_id)
-        element_result["stylable"] = stylable
 
         # Abstract Path
         abstract_path_id = stylable.get("subElement", {}).get(
             "abstractPath", {}).get("_0")
         if abstract_path_id is not None:
             abstract_path = get_abstract_path(gid_json, abstract_path_id)
-            element_result["abstractPath"] = abstract_path
 
             # Stroke Style
             stroke_style_id = abstract_path.get("strokeStyleId")
@@ -146,14 +145,18 @@ def traverse_element(archive, gid_json, element):
                         element_result["pathGeometry"].append(path_geometry)
 
         # Abstract Text
-        abstract_text_id = stylable.get("subElement", {}).get("abstractText", {}).get("_0")
+        abstract_text_id = stylable.get("subElement", {}).get(
+            "abstractText", {}).get("_0")
         if abstract_text_id is not None:
-            #abstract_text = get_abstract_text(gid_json, abstract_text_id)
-            #element_result["abstractText"] = abstract_text
-            raise NotImplementedError(f"Text is not supported.")
-            # TODO Add lines later
+            abstract_text = get_abstract_text(gid_json, abstract_text_id)
+            text_id = abstract_text.get("textId", [])
+            styled_text_id = abstract_text.get(
+                "subElement", {}).get("text", {}).get("_0")
 
-        # singleStyle
+            print(text_id, styled_text_id)
+            raise NotImplementedError("Text is not supported.")
+
+        #! singleStyle (NON-EXISTENT in latest format, found in fileVersion 21)
         single_style_id = stylable.get("subElement", {}).get(
             "singleStyle", {}).get("_0")
         if single_style_id is not None:
