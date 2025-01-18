@@ -17,7 +17,7 @@ import datetime
 import plistlib
 from typing import Any, Dict
 
-import inkex
+#import inkex
 
 
 def decode_b64_plist(encoded_string):
@@ -32,33 +32,33 @@ def decode_b64_plist(encoded_string):
 
 
 # add vectornator / curve import by @joneuhauser
-def parse_text(self, obj: Dict[str, Any]) -> inkex.TextElement:
-    result = inkex.TextElement()
-    # Parse binary-encoded text
-    text_data = unserializeNSKeyedArchiver(
-        base64.b64decode(obj["attributedText"])
-    )
-    result.text = text_data["NSString"]
-    print(
-        repr(text_data["NSString"]),
-        text_data.get("NSAttributeInfo"),
-        len(text_data["NSAttributes"]),
-    )
-    result.transform = inkex.Transform(obj["transform"])
-    result.set("xml:space", "preserve")
-    # TODO: It is unclear what NSAttributeInfo contains.
-    # The first 2 bytes seem to encode the number of characters that the first style
-    # is applied to, LE encoded
-    # For now we just set the first style to the entire text
-    style = (
-        text_data["NSAttributes"][0]
-        if isinstance(text_data["NSAttributes"], list)
-        else text_data["NSAttributes"]
-    )
-    result.style["font"] = style["NSFont"]["NSName"]
-    result.style["font-size"] = f"{style['NSFont']['NSSize']}px"
+#def parse_text(self, obj: Dict[str, Any]) -> inkex.TextElement:
+#    result = inkex.TextElement()
+#    # Parse binary-encoded text
+#    text_data = unserializeNSKeyedArchiver(
+#        base64.b64decode(obj["attributedText"])
+#    )
+#    result.text = text_data["NSString"]
+#    print(
+#        repr(text_data["NSString"]),
+#        text_data.get("NSAttributeInfo"),
+#        len(text_data["NSAttributes"]),
+#    )
+#    result.transform = inkex.Transform(obj["transform"])
+#    result.set("xml:space", "preserve")
+#    # TODO: It is unclear what NSAttributeInfo contains.
+#    # The first 2 bytes seem to encode the number of characters that the first style
+#    # is applied to, LE encoded
+#    # For now we just set the first style to the entire text
+#    style = (
+#        text_data["NSAttributes"][0]
+#        if isinstance(text_data["NSAttributes"], list)
+#        else text_data["NSAttributes"]
+#    )
+#    result.style["font"] = style["NSFont"]["NSName"]
+#    result.style["font-size"] = f"{style['NSFont']['NSSize']}px"
 
-    return result
+#    return result
 
 
 # This file is copied from

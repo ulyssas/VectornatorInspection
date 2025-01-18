@@ -148,12 +148,15 @@ def create_svg_element(element):
     """
     Converts an element defined in VI Decoders.traverse_element() to an SVG element.
     """
-    if element.get("pathGeometry"):
-        # convert to path element
-        return create_svg_path(element)
-    elif element.get("imageData"):
+    if element.get("imageData"):
         # convert to image element
         return create_svg_image(element)
+    elif element.get("styledText"):
+        # convert to text element
+        return create_svg_text(element)
+    elif element.get("pathGeometry"):
+        # convert to path element
+        return create_svg_path(element)
 
 
 def create_svg_path(path_element):
@@ -264,6 +267,69 @@ def create_svg_image(image_element):
 
     # no gradient unlike create_svg_path
     return ET.Element("image", attributes), None
+
+
+def create_svg_text(text_element):
+    """
+    Converts an element defined in VI Decoders.traverse_element() to an SVG text.
+    """
+    # Extract text properties
+    text_property = text_element.get("textProperty", "")
+    styled_text = text_element.get("styledText", "")
+    transform = text_element.get("localTransform", {})
+
+    # Decode font properties from styled_text
+    font_family = styled_text.get("fontName", {}).get("values")[0].get("value", "sans-serif")
+    font_size = styled_text.get("fontSize", {}).get("values")[0].get("value", 16)
+    font_weight = styled_text.get("fontWeight", "normal")
+
+    # Text alignment and anchor
+    alignment = styled_text.get("alignment", {}).get("values", [{}])[0].get("value", 1)
+    text_anchor = {
+        0: "start",
+        1: "middle",
+        2: "end"
+    }.get(alignment, "start")
+
+    # Fill properties
+    text_fill_color = styled_text.get("fillColor").get("values")[0].get("value", None)
+    if text_fill_color:
+        fill_color = sp.rgba_to_hex(sp.color_to_rgb_tuple(text_fill_color))
+        fill_opacity = sp.color_to_rgb_tuple(text_fill_color)[3]
+    else:
+        fill_color = "none"
+        fill_opacity = "1"
+
+    # Style attributes
+    style_parts = [
+        f"display:{'none' if text_element.get('isHidden') else 'inline'}",
+        f"mix-blend-mode:{sp.blend_mode_to_svg(styled_text.get('blendMode', 1))}",
+        f"opacity:{styled_text.get('opacity', 1)}",
+        f"fill:{fill_color}",
+        f"fill-opacity:{fill_opacity}",
+        f"font-family:{font_family}",
+        f"font-size:{font_size}px",
+        f"font-weight:{font_weight}",
+        f"text-anchor:{text_anchor}"
+    ]
+    style = ";".join(style_parts)
+
+    # Text content
+    text_content = styled_text.get("string", "")
+
+    # Create the text element
+    attributes = {
+        "id": text_element.get("name"),
+        "style": style,
+        "x": "0",
+        "y": "0",
+        "transform": tp.create_group_transform(transform)
+    }
+    text_svg_element = ET.Element("text", attributes)
+    text_svg_element.text = text_content
+
+    return text_svg_element, None
+
 
 
 def create_svg_header(artboard):

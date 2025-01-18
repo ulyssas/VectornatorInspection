@@ -12,7 +12,6 @@ Curve 5.18.0 ~ 5.18.4 use fileFormatVersion 44, while Curve 5.1.1 and 5.1.2 use 
 
 
 import extractors as ext
-import tools_text as tt
 
 
 def read_gid_json(archive, gid_json):
@@ -71,6 +70,8 @@ def traverse_element(archive, gid_json, element):
         "blur": element.get("blur", 0),
         "localTransform": None,
         "imageData": None,  # will be base64 string
+        "styledText": None,  # from styledTexts
+        "textProperty": None,  # from texts
         "singleStyle": None,
         "strokeStyle": None,  # what is fillRule/strokeType?
         "fill": None,
@@ -110,8 +111,8 @@ def traverse_element(archive, gid_json, element):
             # Stroke Style
             stroke_style_id = abstract_path.get("strokeStyleId")
             if stroke_style_id is not None:
-                stroke_style = get_stroke_style(gid_json, stroke_style_id)
-                element_result["strokeStyle"] = stroke_style
+                element_result["strokeStyle"] = get_stroke_style(
+                    gid_json, stroke_style_id)
 
             # fill
             fill_id = abstract_path.get("fillId")
@@ -149,12 +150,19 @@ def traverse_element(archive, gid_json, element):
             "abstractText", {}).get("_0")
         if abstract_text_id is not None:
             abstract_text = get_abstract_text(gid_json, abstract_text_id)
-            text_id = abstract_text.get("textId", [])
+            text_id = abstract_text.get("textId")
             styled_text_id = abstract_text.get(
                 "subElement", {}).get("text", {}).get("_0")
 
-            print(text_id, styled_text_id)
-            raise NotImplementedError("Text is not supported.")
+            # texts(layout)
+            if text_id is not None:
+                element_result["textProperty"] = get_text_property(
+                    gid_json, text_id)  # from texts
+
+            # styledTexts
+            if styled_text_id is not None:
+                element_result["styledText"] = get_styled_text(
+                    gid_json, styled_text_id)  # from styledTexts
 
         #! singleStyle (NON-EXISTENT in latest format, found in fileVersion 21)
         single_style_id = stylable.get("subElement", {}).get(
@@ -190,6 +198,10 @@ def vectornator_to_artboard(gid_json):
     }
 
 
+# get_(name) functions
+# could be incorporated into Object(will happen when inkex rewrite)
+
+
 def get_element(gid_json, index):
     """Get element from gid_json."""
     elements = gid_json.get("elements", [])
@@ -212,6 +224,18 @@ def get_image_data(gid_json, index):
     """Get imageData from gid_json."""
     image_datas = gid_json.get("imageDatas", [])
     return image_datas[index]
+
+
+def get_text_property(gid_json, index):
+    """Get text(textProperty) from gid_json."""
+    text_property = gid_json.get("texts", [])
+    return text_property[index]
+
+
+def get_styled_text(gid_json, index):
+    """Get styledText from gid_json."""
+    styled_text = gid_json.get("styledTexts", [])
+    return styled_text[index]
 
 
 def get_stylable(gid_json, index):
