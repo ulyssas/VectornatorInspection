@@ -15,6 +15,7 @@ from PIL import Image
 
 import styles_path as sp
 import tools_path as tp
+import tools_text as tt
 
 
 def create_svg(artboard, layers, file):
@@ -271,65 +272,100 @@ def create_svg_image(image_element):
 
 def create_svg_text(text_element):
     """
-    Converts an element defined in VI Decoders.traverse_element() to an SVG text.
+    Converts an element defined in VI Decoders.traverse_element() to an SVG text with multiple tspans for styled text.
     """
-    # Extract text properties
-    text_property = text_element.get("textProperty", "")
-    styled_text = text_element.get("styledText", "")
+    styled_text = text_element.get("styledText", {})
     transform = text_element.get("localTransform", {})
+    string = styled_text.get("string", "")
 
-    # Decode font properties from styled_text
-    font_family = styled_text.get("fontName", {}).get("values")[0].get("value", "sans-serif")
-    font_size = styled_text.get("fontSize", {}).get("values")[0].get("value", 16)
-    font_weight = styled_text.get("fontWeight", "normal")
+    style_properties = {
+        "fontName": {"values": styled_text.get("fontName", {}).get("values", []), "default": "sans-serif"},
+        "fontSize": {"values": styled_text.get("fontSize", {}).get("values", []), "default": 16},
+        "fillColor": {"values": styled_text.get("fillColor", {}).get("values", []), "default": None},
+        "alignment": {"values": styled_text.get("alignment", {}).get("values", []), "default": 0},
+    }
 
-    # Text alignment and anchor
-    alignment = styled_text.get("alignment", {}).get("values", [{}])[0].get("value", 1)
-    text_anchor = {
-        0: "start",
-        1: "middle",
-        2: "end"
-    }.get(alignment, "start")
-
-    # Fill properties
-    text_fill_color = styled_text.get("fillColor").get("values")[0].get("value", None)
-    if text_fill_color:
-        fill_color = sp.rgba_to_hex(sp.color_to_rgb_tuple(text_fill_color))
-        fill_opacity = sp.color_to_rgb_tuple(text_fill_color)[3]
-    else:
-        fill_color = "none"
-        fill_opacity = "1"
-
-    # Style attributes
-    style_parts = [
-        f"display:{'none' if text_element.get('isHidden') else 'inline'}",
-        f"mix-blend-mode:{sp.blend_mode_to_svg(styled_text.get('blendMode', 1))}",
-        f"opacity:{styled_text.get('opacity', 1)}",
-        f"fill:{fill_color}",
-        f"fill-opacity:{fill_opacity}",
-        f"font-family:{font_family}",
-        f"font-size:{font_size}px",
-        f"font-weight:{font_weight}",
-        f"text-anchor:{text_anchor}"
-    ]
-    style = ";".join(style_parts)
-
-    # Text content
-    text_content = styled_text.get("string", "")
-
-    # Create the text element
     attributes = {
-        "id": text_element.get("name"),
-        "style": style,
-        "x": "0",
-        "y": "0",
-        "transform": tp.create_group_transform(transform)
+        "id": text_element.get("name", ""),
+        "transform": tp.create_group_transform(transform, keep_proportion=True),
+        "y": "0"
     }
     text_svg_element = ET.Element("text", attributes)
-    text_svg_element.text = text_content
+
+    current_index = 0
+    last_upper_bound = 0
+    current_styles = {}
+    current_x = 0 # 現在の x 座標を追跡
+    previous_tspan_length = 0 # 直前の tspan の文字数を追跡
+
+    while current_index < len(string):
+        next_upper_bound = len(string)
+        segment_styles = {}
+
+		# check the range of style
+        for style_name, style_data in style_properties.items():
+            current_value = style_data["default"] # set the default value
+            for range_item in style_data["values"]:
+                if last_upper_bound < range_item["upperBound"]:
+                    current_value = range_item["value"]
+                    next_upper_bound = min(next_upper_bound, range_item["upperBound"])
+                    break
+            segment_styles[style_name] = current_value
+
+        segment_text = string[current_index:next_upper_bound]
+
+        lines = segment_text.split('\n')
+        for i, line in enumerate(lines):
+            if not line and i < len(lines) -1 :
+                tspan = create_svg_tspan("", segment_styles, is_new_line=True) # 空行の場合はテキストなしで tspan 生成
+                text_svg_element.append(tspan)
+                current_x = 0
+                continue
+
+            is_new_line = i > 0 # 2行目以降は改行後の行
+            tspan = create_svg_tspan(line, segment_styles, is_new_line=is_new_line)
+            text_svg_element.append(tspan)
+
+            # 次の tspan の x 座標を更新 (簡易的な幅計算)
+            # ここではフォントサイズを基準に概算で幅を計算 (調整が必要な場合があります)
+             # **修正点:** 次の tspan の x 座標を文字数とフォントサイズから計算
+            current_x += segment_styles["fontSize"] * 0.5 * len(line) # 係数を 0.5 に調整 (微調整が必要な場合あり)
+            previous_tspan_length = len(line)
+
+        current_index = next_upper_bound
+        last_upper_bound = next_upper_bound
+        if "\n" in segment_text: # 改行があったら x 座標をリセット
+            current_x = 0
 
     return text_svg_element, None
 
+
+def create_svg_tspan(text, styles, is_new_line=False):
+    """
+    Generates tspan data from text and its style.
+
+    Args:
+        text (str): text data.
+        styles (dict): style data (fillColor, fontName, fontSize, alignment).
+        is_new_line (bool): new line or not.
+
+    Returns:
+        xml.etree.ElementTree.Element: generated tspan.
+    """
+    tspan_style_str = ""
+    if styles.get("fillColor"):
+        fill_color_data = styles["fillColor"]
+        fill_color_hex = sp.rgba_to_hex(sp.color_to_rgb_tuple(fill_color_data))
+        fill_opacity = str(sp.color_to_rgb_tuple(fill_color_data)[3])
+        tspan_style_str += f"fill:{fill_color_hex};fill-opacity:{fill_opacity};"
+    tspan_style_str += f"font-family:{styles['fontName']};font-size:{styles['fontSize']}px;text-anchor:{tt.get_text_anchor(styles['alignment'])};"
+
+    tspan_attributes = {"style": tspan_style_str, "x": "1em"}
+    if is_new_line:
+        tspan_attributes["dy"] = "1em" # potential issue
+    tspan = ET.Element("tspan", tspan_attributes)
+    tspan.text = text
+    return tspan
 
 
 def create_svg_header(artboard):

@@ -31,8 +31,6 @@ def read_gid_json(archive, gid_json):
         layers_result.append(
             traverse_layer(archive, gid_json, layer))
 
-    # print(layers_result)
-
     return layers_result
 
 

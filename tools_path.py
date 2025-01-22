@@ -131,7 +131,7 @@ def calculate_origin(nodes, translation):
     return ox+tx, oy+ty
 
 
-def create_group_transform(local_transform):
+def create_group_transform(local_transform, keep_proportion=False):
     """
     Creates a transform string for the `g` element in SVG format.
 
@@ -165,7 +165,10 @@ def create_group_transform(local_transform):
 
     if sx != 1 or sy != 1:
         # Scale by (sx, sy)
-        transform_parts.append(f"scale({sx:.6f} {sy:.6f})")
+        if keep_proportion == True:
+            transform_parts.append(f"scale({sx:.6f})")
+        else:
+            transform_parts.append(f"scale({sx:.6f} {sy:.6f})")
 
     if shear != 0:
         # Skew in the X direction

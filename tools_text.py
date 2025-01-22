@@ -28,7 +28,20 @@ def decode_b64_plist(encoded_string):
     return decoded_bplist
 
 
+def get_text_anchor(alignment_value):
+    """
+    alignment to SVG text-anchor
 
+    0: Left
+    1: Right
+    2: Right
+    3: Justify
+    """
+    return {
+        0: "start",
+        1: "middle",
+        2: "end"
+    }.get(alignment_value, "start")
 
 
 # add vectornator / curve import by @joneuhauser
