@@ -5,6 +5,11 @@
 ## About
 Vectornator Inspection aims to convert .vectornator / .curve files into SVG.
 
+## Announcement
+This project has been turned into Inkscape extension! The link is here: [extension-curve]
+
+[extension-curve]: https://gitlab.com/WimPum/extension-curve
+
 ## TODO
 * Complete Linearity Curve 5.x format(yes, Vectornator 4.x and Curve 5.x files are technically different format!)
 * My plan is to add support for fileFormatVersion 44(5.18.0~5.18.4) first, then add Vectornator 4.x file format support, and later, earlier Linearity Curve(5.1.2).
